@@ -75,6 +75,13 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - Schema comes from one `site` request with includes, not from `ctx.loadItemTypeFields` (spike § 1).
 - "Minimum request count" made concrete: 3 on Gestart (`1 + max(1, ceil(records/500)) + max(1, ceil(blocks/500))`; a listing over a non-empty type list always costs at least one request, an empty list costs none).
 
+**V2 — done on 2026-10-18**
+- Data layer in `src/data/`: `parseSchema`, `extractLinks`, `buildGraph` (pure, 19 tests), `loadGraph` (only CMA module, counting `fetchFn`, memo per environment). Page shows permission / loading / error / counts.
+- Verified on Gestart: 248 records · 19 models · 347 relations · 3 CMA requests; per-field counts equal to the POC; spot-checks and both themes OK.
+- Final review added two things V3 builds on: `Graph` arrays are readonly (copy nodes/edges before handing them to D3, which mutates them) and every node carries `model`, its index into `graph.models`.
+- Rulings: request formula `1 + max(1, ceil(records/500)) + max(1, ceil(blocks/500))`; self-links kept as edges (V3 decides how to draw them); commit trailers name the model that wrote the commit.
+- Deferred to later slices: memo reset (V5 refresh, key on environment + baseUrl), missing-permission message styled as error, label for the pseudo `parent` chip (e.g. "parent (tree)"), chunks of >200 types listed sequentially, `parseSchema` fallback to `title_field` when the presentation field is missing.
+
 ## V3 — Graph view
 
 **In**
