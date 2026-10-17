@@ -26,9 +26,30 @@ export type Schema = {
 
 export type NodeStatus = 'published' | 'updated' | 'draft';
 
+export type GraphModel = {
+  readonly itemTypeId: string;
+  readonly apiKey: string;
+  readonly name: string;
+  count: number;
+};
+export type GraphField = { readonly apiKey: string; readonly isPseudo: boolean };
+export type GraphNode = {
+  readonly id: string;
+  readonly title: string;
+  readonly itemTypeId: string;
+  /** Index into `graph.models` of the node's item type. */
+  readonly model: number;
+  readonly status: NodeStatus;
+};
+export type GraphEdge = {
+  readonly source: number;
+  readonly target: number;
+  readonly field: number;
+};
+
 export type Graph = {
-  models: { itemTypeId: string; apiKey: string; name: string; count: number }[];
-  fields: { apiKey: string; isPseudo: boolean }[];
-  nodes: { id: string; title: string; itemTypeId: string; status: NodeStatus }[];
-  edges: { source: number; target: number; field: number }[];
+  readonly models: readonly Readonly<GraphModel>[];
+  readonly fields: readonly GraphField[];
+  readonly nodes: readonly GraphNode[];
+  readonly edges: readonly GraphEdge[];
 };

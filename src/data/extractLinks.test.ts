@@ -88,17 +88,20 @@ describe('extractLinks', () => {
   });
 
   it('attributes links in a block nested in a block inside Structured Text to the top-level field', () => {
-    const inner = block('b2', { ref: 'deep' });
+    const viaField = block('b2', { ref: 'deep-field' });
+    const viaInline = block('b3', { ref: 'deep-inline' });
     const outer = block('b1', {
       hero: 'b2',
-      inner: dast({ type: 'inlineBlock', item: 'b2' }),
+      inner: dast({ type: 'inlineBlock', item: 'b3' }),
     });
     const out = extractLinks(
       page,
       { body: dast({ type: 'block', item: 'b1' }) },
-      lookupWith([outer, inner]),
+      lookupWith([outer, viaField, viaInline]),
     );
-    expect(out).toEqual([{ fieldApiKey: 'body', targetId: 'deep' }]);
+    expect(out).toHaveLength(2);
+    expect(out).toContainEqual({ fieldApiKey: 'body', targetId: 'deep-field' });
+    expect(out).toContainEqual({ fieldApiKey: 'body', targetId: 'deep-inline' });
   });
 
   it('unions localized values without duplicates', () => {

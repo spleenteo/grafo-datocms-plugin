@@ -1,5 +1,15 @@
 import { extractLinks } from './extractLinks';
-import type { Graph, NodeStatus, RawItem, Schema, SchemaItemType } from './types';
+import type {
+  Graph,
+  GraphEdge,
+  GraphField,
+  GraphModel,
+  GraphNode,
+  NodeStatus, 
+  RawItem,
+  Schema,
+  SchemaItemType,
+} from './types';
 
 export const PARENT_FIELD_KEY = 'parent';
 
@@ -33,7 +43,7 @@ export function buildGraph(schema: Schema, items: RawItem[], blocks: RawItem[]):
   const blocksById = new Map(blocks.map((b) => [b.id, b]));
   const lookup = { schema, blocksById };
 
-  const models: Graph['models'] = [];
+  const models: GraphModel[] = [];
   const modelIndex = new Map<string, number>();
   for (const t of schema.itemTypes.values()) {
     if (t.isBlock) continue;
@@ -41,24 +51,26 @@ export function buildGraph(schema: Schema, items: RawItem[], blocks: RawItem[]):
     models.push({ itemTypeId: t.id, apiKey: t.apiKey, name: t.name, count: 0 });
   }
 
-  const nodes: Graph['nodes'] = [];
+  const nodes: GraphNode[] = [];
   const nodeIndex = new Map<string, number>();
   const kept: { item: RawItem; itemType: SchemaItemType }[] = [];
   for (const item of items) {
     const itemType = schema.itemTypes.get(item.item_type.id);
     if (!itemType || itemType.isBlock) continue;
+    const model = modelIndex.get(itemType.id) as number;
     nodeIndex.set(item.id, nodes.length);
     nodes.push({
       id: item.id,
       title: titleOf(item, itemType, schema.locales),
       itemTypeId: itemType.id,
+      model,
       status: statusOf(item),
     });
-    models[modelIndex.get(itemType.id) as number].count++;
+    models[model].count++;
     kept.push({ item, itemType });
   }
 
-  const fields: Graph['fields'] = [];
+  const fields: GraphField[] = [];
   const fieldIndex = new Map<string, number>();
   const fieldFor = (apiKey: string, isPseudo: boolean): number => {
     const key = `${isPseudo ? 'p' : 'r'}:${apiKey}`;
@@ -71,7 +83,7 @@ export function buildGraph(schema: Schema, items: RawItem[], blocks: RawItem[]):
     return idx;
   };
 
-  const edges: Graph['edges'] = [];
+  const edges: GraphEdge[] = [];
   const seen = new Set<string>();
   const addEdge = (source: number, target: number, apiKey: string, isPseudo: boolean) => {
     const key = `${source}|${target}|${isPseudo ? 'p' : 'r'}:${apiKey}`;

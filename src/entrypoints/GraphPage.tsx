@@ -1,5 +1,6 @@
 import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { Canvas, Spinner } from 'datocms-react-ui';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { loadGraph } from '../data/loadGraph';
 import type { Graph } from '../data/types';
@@ -36,7 +37,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     };
   }, [apiToken, environment, baseUrl]);
 
-  let body: React.ReactNode;
+  let body: ReactNode;
   if (!apiToken) {
     body = (
       <p className={styles.error}>

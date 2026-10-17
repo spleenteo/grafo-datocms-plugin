@@ -39,8 +39,11 @@ describe('buildGraph', () => {
       ['unused', 0],
     ]);
     expect(g.nodes).toEqual([
-      { id: '1', title: 'One', itemTypeId: 'article', status: 'published' },
+      { id: '1', title: 'One', itemTypeId: 'article', model: 0, status: 'published' },
     ]);
+    for (const node of g.nodes) {
+      expect(g.models[node.model].itemTypeId).toBe(node.itemTypeId);
+    }
   });
 
   it('builds edges for link fields', () => {
