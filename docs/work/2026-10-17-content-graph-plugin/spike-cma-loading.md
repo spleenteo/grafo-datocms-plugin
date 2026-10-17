@@ -23,7 +23,7 @@ Not. Two strategies, same project, same result (248 records, 291 edges, set diff
 | `items.list` without `nested`, `perPage` 500, plus `items.list` with `filter.type` = all block models, `perPage` 500 | 1 + 1 + 1 | ~250–500 ms |
 
 Without `nested`, block fields hold block IDs: modular content (`rich_text`) is an array of IDs, `single_block` an ID, Structured Text `block`/`inlineBlock` nodes carry `item: <id>`. Blocks listed by type come back with their own fields flattened, so the walker resolves IDs through a `Map<blockId, block>` and recurses (nested blocks reference other block IDs the same way).
-Requests: `1 + ceil(records / 500) + ceil(blocks / 500)`. 10k records and 20k blocks are 61 requests; with `concurrency: 5` this stays under the rate limit (60 req / 3 s) and the client retries 429s on its own.
+Requests: `1 + max(1, ceil(records / 500)) + max(1, ceil(blocks / 500))` (a listing with no results still costs its first page; no block models → no block request). 10k records and 20k blocks are 61 requests; with `concurrency: 5` this stays under the rate limit (60 req / 3 s) and the client retries 429s on its own.
 Cross-model `filter.type` (comma-separated IDs) works for both models and block models.
 
 **3. Which relations exist?**
