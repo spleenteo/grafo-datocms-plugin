@@ -28,7 +28,7 @@
 
 ---
 
-### T1: Scaffold the plugin and the page `critical`
+### Task 1 (T1): Scaffold the plugin and the page `critical`
 
 **Files:** create `package.json`, `package-lock.json`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`, `vite.config.ts`, `index.html`, `src/vite-env.d.ts`, `src/utils/render.tsx`, `src/main.tsx`, `src/entrypoints/GraphPage.tsx`, `src/entrypoints/GraphPage.module.css`.
 
@@ -44,7 +44,7 @@
 
 **Done:** gate green; `git status` shows no `dist/`, `node_modules/` or `*.tsbuildinfo`. Commit.
 
-### T2: Minimal README and license (depends on: T1)
+### Task 2 (T2): Minimal README and license (depends on: T1)
 
 **Files:** create `README.md`, `LICENSE` (MIT, holder `spleenteo`, 2026); modify `CLAUDE.md`.
 
@@ -54,13 +54,13 @@
 
 **Verify / Done:** no secrets, no project IDs or tokens in the text. Commit.
 
-### T3: Public GitHub repo (depends on: T2)
+### Task 3 (T3): Public GitHub repo (depends on: T2)
 
 **What:** `gh repo create spleenteo/datocms-plugin-content-graph --public --source . --remote origin`, then push `main`. **Ask the user before running** (outward-facing).
 
 **Verify / Done:** repo public on GitHub; `poc/` and `Idea.md` absent from the remote tree (`gh api repos/spleenteo/datocms-plugin-content-graph/contents`).
 
-### T4: Install and check in DatoCMS — manual, at close (depends on: T1)
+### Task 4 (T4): Install and check in DatoCMS — manual, at close (depends on: T1)
 
 **What:** on the test project, add a private plugin from URL `http://localhost:5173/` (UI: Configuration → Plugins → Add new → Create a new private plugin) and grant `currentUserAccessToken`. Done by the user in the UI, or via CMA only on explicit consent.
 
