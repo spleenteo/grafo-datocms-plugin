@@ -33,3 +33,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-17 — opening — repo initialised, guidelines written, path chosen — slicing — — —
 - 2026-10-17 — slicing — 6 slices in slices.md; fidelity check skipped (no frame); impact skipped (no code) — V1 plan — — —
 - 2026-10-18 — V1 close — scaffold, README, public repo, tab verified in DatoCMS; gate green — spike CMA loading, then V2 plan — — —
+- 2026-10-18 — spike CMA loading — 3 requests on Gestart (schema 1, records 1, blocks 1), POC edges reconciled (347 = 291 + 56 parent_id) — V2 plan — — —
