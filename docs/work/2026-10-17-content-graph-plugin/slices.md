@@ -38,7 +38,7 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 
 **Deviations found while planning V1**
 - No trivial test: `test` runs `vitest run --passWithNoTests` until V2 brings pure logic (guidelines: tests only where needed).
-- Package and repo name: `datocms-plugin-content-graph`.
+- npm package name `datocms-plugin-content-graph`; GitHub repo `spleenteo/content-graph-datocms-plugin` (user choice at T3).
 
 ## V2 — Graph data from the CMA
 

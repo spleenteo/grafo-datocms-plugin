@@ -14,7 +14,7 @@
 
 - Package name `datocms-plugin-content-graph`, version `0.1.0`, `"type": "module"`, keyword `datocms-plugin`.
 - `datoCmsPlugin`: `title: "Content Graph"`, `entryPoint: "dist/index.html"`, `permissions: ["currentUserAccessToken"]`: declared for the Marketplace; private installs ignore it and grant it in the UI (T4).
-- `homepage: "https://github.com/spleenteo/datocms-plugin-content-graph"`.
+- `homepage: "https://github.com/spleenteo/content-graph-datocms-plugin"`.
 - Plugin code at repo root (no subfolder). Directories per guidelines: `src/entrypoints/`, `src/utils/` (render helper).
 - Only `datocms-react-ui` components and Canvas CSS variables; no custom fonts, no hardcoded colours.
 - Never commit `poc/`, `Idea.md`, `.env*`, `dist/`, `node_modules/` (already in `.gitignore`).
@@ -56,9 +56,9 @@
 
 ### Task 3 (T3): Public GitHub repo (depends on: T2)
 
-**What:** `gh repo create spleenteo/datocms-plugin-content-graph --public --source . --remote origin`, then push `main`. **Ask the user before running** (outward-facing).
+**What:** `gh repo create spleenteo/content-graph-datocms-plugin --public --source . --remote origin`, then push `main`. **Ask the user before running** (outward-facing).
 
-**Verify / Done:** repo public on GitHub; `poc/` and `Idea.md` absent from the remote tree (`gh api repos/spleenteo/datocms-plugin-content-graph/contents`).
+**Verify / Done:** repo public on GitHub; `poc/` and `Idea.md` absent from the remote tree (`gh api repos/spleenteo/content-graph-datocms-plugin/contents`).
 
 ### Task 4 (T4): Install and check in DatoCMS — manual, at close (depends on: T1)
 

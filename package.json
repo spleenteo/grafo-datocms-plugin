@@ -4,7 +4,7 @@
   "description": "Render DatoCMS record relations as a graph",
   "type": "module",
   "keywords": ["datocms-plugin"],
-  "homepage": "https://github.com/spleenteo/datocms-plugin-content-graph",
+  "homepage": "https://github.com/spleenteo/content-graph-datocms-plugin",
   "datoCmsPlugin": {
     "title": "Content Graph",
     "entryPoint": "dist/index.html",
