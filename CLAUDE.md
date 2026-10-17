@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Pre-code. The repo holds only the brief (`Idea.md`), a static proof of concept (`poc/gestart-graph.html`) and a Pen.dev design file (`content-graph-dato-design.pen`). No `package.json`, build, lint or test setup exists yet. Update this file with real commands once the plugin is scaffolded.
+V1 done: empty full-page plugin (tab "Content Graph" in the main navigation, `pageId` `graph`) rendering a themed placeholder. No CMA calls yet. Entry: `src/main.tsx`, page: `src/entrypoints/GraphPage.tsx`. Graph, data layer and filters are not built yet.
+
+Commands:
+
+- `npm run dev`: Vite at http://localhost:5173/ (install as private plugin, grant `currentUserAccessToken` in the plugin's permissions tab).
+- Gate before committing: `npm run typecheck && npm test && npm run build`.
 
 ## Goal
 
