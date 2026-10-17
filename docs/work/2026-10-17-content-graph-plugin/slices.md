@@ -40,6 +40,11 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - No trivial test: `test` runs `vitest run --passWithNoTests` until V2 brings pure logic (guidelines: tests only where needed).
 - npm package name `datocms-plugin-content-graph`; GitHub repo `spleenteo/content-graph-datocms-plugin` (user choice at T3).
 
+**V1 — done on 2026-10-18**
+- T1–T3 executed as planned: scaffold, README/LICENSE, public repo with the `content-graph-plugin` branch pushed; `poc/` and `Idea.md` absent from the remote.
+- T4: after installing as a private plugin the tab did not appear. Cause: the Vite dev server was not running, so DatoCMS could not load the iframe and never called `mainNavigationTabs`. With `npm run dev` up and a full reload, the tab appears.
+- Gate green (typecheck, `vitest --passWithNoTests`, build).
+
 ## V2 — Graph data from the CMA
 
 **Precondition**: `spike-cma-loading.md` done before the plan.
