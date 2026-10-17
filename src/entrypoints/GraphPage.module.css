@@ -15,3 +15,8 @@
   margin: 0;
   color: var(--color--ink-muted);
 }
+
+.error {
+  margin: 0;
+  color: var(--alert-color, var(--color--ink));
+}
