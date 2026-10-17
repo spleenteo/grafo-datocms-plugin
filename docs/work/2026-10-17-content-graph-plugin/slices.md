@@ -69,6 +69,12 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - Localized fields: link values may be per-locale objects.
 - Links to records of models excluded from the load (or to deleted records) must not crash the build.
 
+**Deviations found while planning V2**
+- Relations also include `parent_id` of tree models, as a pseudo-field `parent` (spike: 56 of the POC's 347 edges; user decision 2026-10-18).
+- Links inside blocks are attributed to the record's top-level field, as in the POC (user decision 2026-10-18).
+- Schema comes from one `site` request with includes, not from `ctx.loadItemTypeFields` (spike § 1).
+- "Minimum request count" made concrete: 3 on Gestart (`1 + ceil(records/500) + ceil(blocks/500)`).
+
 ## V3 — Graph view
 
 **In**
