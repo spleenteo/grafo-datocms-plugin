@@ -36,6 +36,10 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 **Gotchas**
 - Check which permission the page needs later (`currentUserAccessToken`) and declare it now in `package.json` `datoCmsPlugin.permissions`, so V2 doesn't force a reinstall.
 
+**Deviations found while planning V1**
+- No trivial test: `test` runs `vitest run --passWithNoTests` until V2 brings pure logic (guidelines: tests only where needed).
+- Package and repo name: `datocms-plugin-content-graph`.
+
 ## V2 — Graph data from the CMA
 
 **Precondition**: `spike-cma-loading.md` done before the plan.

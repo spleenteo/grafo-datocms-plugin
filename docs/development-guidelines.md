@@ -32,6 +32,7 @@ Everything in English: code, comments, docs, commit messages, UI strings.
 - `src/data/`: CMA client usage, caching, graph building.
 - `src/graph/`: D3 simulation and rendering.
 - `src/components/`: UI pieces built on `datocms-react-ui`.
+- `src/utils/`: framework glue only (React `render` helper).
 
 ## Dependencies
 
