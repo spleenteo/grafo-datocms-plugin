@@ -479,7 +479,7 @@ export function renderGraph(
   }
 
   let linkSel: LinkSelection = linkLayer.selectAll<SVGLineElement, SimLink>('line');
-  let nodeSel: NodeSelection = nodeLayer.selectAll<SVGGElement, SimNode>('g');
+  let nodeSel: NodeSelection = nodeLayer.selectChildren<SVGGElement, SimNode>('g');
   // Elements of the joined nodes and links, by id and edge.
   const nodeEls = new Map<string, NodeEls>();
   let linkEls = new Map<number, SVGLineElement>();
@@ -489,8 +489,10 @@ export function renderGraph(
       .selectAll<SVGLineElement, SimLink>('line')
       .data(linksToShow, (d) => d.edge)
       .join(enterLinks, (u) => u, (x) => x.remove());
+    // Direct children only: a node group holds the label's own groups, which
+    // carry the same datum and would join (and exit) as duplicates.
     nodeSel = nodeLayer
-      .selectAll<SVGGElement, SimNode>('g')
+      .selectChildren<SVGGElement, SimNode>('g')
       .data(nodesToShow, (d) => d.id)
       .join(
         enterNodes,
