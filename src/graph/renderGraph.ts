@@ -815,6 +815,12 @@ export function renderGraph(
     return box;
   }
 
+  // Camera follow for the current settle: set by update/setDistance/relayout
+  // when not userMoved and not reduced motion; cleared by a user gesture
+  // (userMoved), focusOn, fit and at `end`. Declared before the zoom
+  // behaviour: the mount's initial transform fires a zoom `end` that reads it.
+  let follow = false;
+
   const zoomBehavior = zoom<SVGSVGElement, unknown>()
     .scaleExtent([0.1, 6])
     .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
@@ -990,10 +996,6 @@ export function renderGraph(
   // 'unlessMoved': settles started by update/distance; 'always': animated relayout.
   // 'focus': a settle with a focus target, ends on the focus box.
   let fitOnEnd: 'none' | 'unlessMoved' | 'always' | 'focus' = 'none';
-  // Camera follow for the current settle: set by update/setDistance/relayout
-  // when not userMoved and not reduced motion; cleared by a user gesture
-  // (userMoved), focusOn, fit and at `end`.
-  let follow = false;
   // reframe() waiting for an update(); checked one frame later.
   let reframePending = false;
   let reframeFrame: number | null = null;
