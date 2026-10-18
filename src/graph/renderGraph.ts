@@ -838,8 +838,12 @@ export function renderGraph(
     })
     // Not per frame; and not during a camera follow, whose settle ends with a
     // simulation `end` (a follow step emits a zoom end every tick).
-    .on('end', () => {
-      if (!destroyed && !follow) refreshBudget();
+    .on('end', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
+      if (destroyed) return;
+      // At rest the exact value, not the last one past the epsilon.
+      labelK = Math.max(1, event.transform.k);
+      svgEl.style.setProperty('--label-k', String(labelK));
+      if (!follow) refreshBudget();
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);
   // The release can land outside the svg, hence window.
