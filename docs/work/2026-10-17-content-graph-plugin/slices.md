@@ -6,14 +6,17 @@ shaping: true
 
 No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, local only, never committed) and the plugin shape is the official [content-calendar](https://github.com/datocms/plugins/tree/master/content-calendar) plugin (main navigation tab + full-page render). Each slice ends in something visible inside the DatoCMS dashboard.
 
+**Layout direction (owner, 2026-10-18):** the design frame "Mockup" (`content-graph-dato-design.pen`) is the target layout: configuration rail on the left, record details on the right, options floating over the canvas. A general UI review will refine it later; every slice already follows it.
+
 | Slice | Name | Demo |
 |---|---|---|
 | V1 | Empty full-page plugin | "Content Graph" tab in the main nav opens a themed empty page |
 | V2 | Graph data from the CMA | The page shows record, model and relation counts for the current environment |
 | V3 | Graph view | Force-directed graph of all records; clicking a node opens the record |
 | V4 | Filter rail | Models, status and relation filters reshape the graph live |
-| V5 | Inspector, search, view controls | Selected record details, title search, zoom/fit/relayout, labels, distance |
-| V6 | Marketplace release | README, cover image, package metadata, published to npm |
+| V5 | Role isolation, selection, inspector | A role sees only what it may read; clicking a node highlights its relations and opens the inspector |
+| V6 | Search and view controls | Title search, label modes, zoom/fit/relayout, distance, refresh |
+| V7 | Marketplace release | README, cover image, package metadata, published to npm |
 
 ---
 
@@ -143,17 +146,17 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - Rulings: plan executed without the first stop (owner asked); review fixes applied as recommended; V5 shape constraints recorded below instead of V4 code.
 - Spike CDA vs CMA run during the close (`spike-cda-vs-cma.md`): stay on the CMA; role isolation is a hard requirement; two leaks found, scheduled as V5's first task.
 
-## V5 — Inspector, search, view controls
+## V5 — Role isolation, selection, inspector
+
+_Split from the former V5 on 2026-10-18 (too many tasks for one plan): search, labels, view controls and refresh moved to V6._
 
 **In**
+- Role isolation (hard requirement, spike CDA vs CMA): models the current role can't read don't appear anywhere (rail, counts); blocks of records the role can't read are not downloaded.
+- Selection: click selects, hover/selection focus highlights the node's relations (POC `paint()`, design focus state).
 - Inspector panel for the selected node: title, model, status, outgoing and incoming relations grouped by field, each clickable to focus or open the record.
-- Title search with match count; Enter focuses the first match.
-- View controls: label mode (smart / all / on focus), node-distance slider, zoom in/out, fit, relayout.
-- Manual refresh button reloading data from the CMA.
-- Keyboard access to nodes (focusable, Enter selects/opens), deferred from V3.
-- First task, role isolation (hard requirement, spike CDA vs CMA): models the current role can't read don't appear anywhere (rail, counts); blocks of records the role can't read are not downloaded.
+- Keyboard access to nodes (focusable, Enter selects), deferred from V3.
 
-**Constraints from the V4 final review (for the V5 plan)**
+**Constraints from the V4 final review (for the V5 and V6 plans)**
 - Refresh: `Filters` hold model/field array indexes, so a refreshed `Graph` must either reset filters (and say so) or remap them by `apiKey`; keep the last graph on screen with a loading indicator instead of swapping the workspace for the spinner, or zoom and filters are lost on every refresh.
 - View state (`selectedId`, `query`, `labelMode`, `distance`) lives in `GraphWorkspace`; `GraphView` forwards each through its own effect to a dedicated renderer method (`setSelection`, `setLabels`, `setDistance`, `fit`, `relayout`), never through `update(visible)`. Zoom/fit/relayout buttons reach the renderer via `useImperativeHandle` on `GraphView`.
 - Every callback passed to `renderGraph` (`onOpen`, `onSelect`, `onHover`) goes through a ref, so the mount effect never re-runs on React renders.
@@ -161,12 +164,25 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - Fit after filter changes should respect a `userMoved` flag (POC) once zoom controls exist.
 
 **Out**
+- Search, label modes, view controls, refresh (V6). Editing records from the plugin.
+
+**Done**
+- With a role reading one model only, nothing else is loaded or shown (checked with a role-bound token). Selection, focus, inspector and keyboard work on Gestart. Gate green.
+
+## V6 — Search and view controls
+
+**In**
+- Title search with match count; Enter focuses the first match.
+- View controls: label mode (smart / all / on focus), node-distance slider, zoom in/out, fit, relayout (design: controls bottom-right, label mode top-right, search top-left).
+- Manual refresh button reloading data from the CMA (constraints above).
+
+**Out**
 - Editing records from the plugin.
 
 **Done**
-- All POC interactions available, built on `datocms-react-ui` components. Gate green.
+- All remaining POC interactions available, built on `datocms-react-ui` components. Gate green.
 
-## V6 — Marketplace release
+## V7 — Marketplace release
 
 **In**
 - README (dev-oriented, terse): what it does, permissions, API usage, local development.

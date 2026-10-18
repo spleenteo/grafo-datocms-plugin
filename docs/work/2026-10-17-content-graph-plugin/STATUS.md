@@ -2,7 +2,7 @@
 status: open
 phase: slice
 slice: V5
-step: plan
+step: execute
 work: content-graph-plugin
 stack: generic
 updated: 2026-10-18
@@ -24,8 +24,9 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - [x] V2 — Graph data from the CMA (spike first)
 - [x] V3 — Graph view
 - [x] V4 — Filter rail
-- [ ] V5 — Inspector, search, view controls
-- [ ] V6 — Marketplace release
+- [ ] V5 — Role isolation, selection, inspector
+- [ ] V6 — Search and view controls
+- [ ] V7 — Marketplace release
 
 ## Log
 
