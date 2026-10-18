@@ -9,10 +9,11 @@ import { nodeIndexById } from '../data/relationsOf';
 import type { Graph } from '../data/types';
 import { autoDistance } from '../graph/autoDistance';
 import { recordEditPath } from '../graph/recordEditPath';
+import { orderModels } from '../data/modelList';
 import { searchTitles } from '../data/searchTitles';
 import type { LabelMode } from '../graph/renderGraph';
 import { prepareSimulation } from '../graph/prepareSimulation';
-import CanvasControls from './CanvasControls';
+import CanvasControls, { type SearchResults } from './CanvasControls';
 import FilterRail from './FilterRail';
 import GraphView, { type GraphViewHandle } from './GraphView';
 import Inspector from './Inspector';
@@ -33,6 +34,7 @@ interface Props {
 
 /** Results listed under the search field when it reaches every record. */
 const MAX_RESULTS = 8;
+const MAX_MODEL_RESULTS = 3;
 
 function isTextEntry(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -266,22 +268,34 @@ export default function GraphWorkspace({
     () => searchTitles(graph, isCanvasEmpty ? null : visibleIds, query),
     [graph, isCanvasEmpty, visibleIds, query],
   );
-  const results = useMemo(
-    () =>
-      isCanvasEmpty
-        ? matches.slice(0, MAX_RESULTS).map((id) => {
-            const node = graph.nodes[indexById.get(id) ?? 0];
-            return { id, title: node.title, modelName: modelName(node.model) };
-          })
-        : null,
-    [isCanvasEmpty, matches, graph, indexById, modelName],
+  const results = useMemo((): SearchResults | null => {
+    if (!isCanvasEmpty) return null;
+    const records = matches.slice(0, MAX_RESULTS).map((id) => {
+      const node = graph.nodes[indexById.get(id) ?? 0];
+      return { id, title: node.title, modelName: modelName(node.model) };
+    });
+    // Models first: picking one draws it whole, a wider start than one record.
+    const models = query.trim()
+      ? orderModels(graph.models, 'count', query)
+          .slice(0, MAX_MODEL_RESULTS)
+          .map((index) => ({ index, name: graph.models[index].name, count: graph.models[index].count }))
+      : [];
+    return { models, records, recordCount: matches.length };
+  }, [isCanvasEmpty, matches, graph, indexById, modelName, query]);
+  const pickModel = useCallback(
+    (model: number) => {
+      setQuery('');
+      changeFilters((prev) => ({ ...prev, models: new Set([model]) }));
+    },
+    [changeFilters],
   );
   const matchIds = useMemo(() => new Set(matches), [matches]);
   const jumpToFirstMatch = useCallback(() => {
     const first = matches[0];
-    if (first === undefined) return;
-    selectNode(first);
-  }, [matches, selectNode]);
+    const firstModel = results?.models[0];
+    if (first !== undefined) selectNode(first);
+    else if (firstModel !== undefined) pickModel(firstModel.index);
+  }, [matches, results, selectNode, pickModel]);
 
   const contextCount = visible.contextIds.size;
   const stats =
@@ -314,20 +328,6 @@ export default function GraphWorkspace({
             onSelect={selectNode}
           />
         )}
-        {isCanvasEmpty && (
-          <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>
-              {isLargeGraph(graph) ? (
-                <>
-                  <strong>{graph.nodes.length} records</strong> · too many to draw at once
-                </>
-              ) : (
-                'Nothing matches the filters'
-              )}
-            </p>
-            <p>Search a record to start, or pick models in the rail.</p>
-          </div>
-        )}
         <CanvasControls
           query={query}
           onQueryChange={setQuery}
@@ -335,6 +335,23 @@ export default function GraphWorkspace({
           matchCount={matches.length}
           results={results}
           onPickResult={selectNode}
+          onPickModel={pickModel}
+          centerIntro={
+            isCanvasEmpty ? (
+              <>
+                <p>
+                  {isLargeGraph(graph) ? (
+                    <>
+                      <strong>{graph.nodes.length} records</strong> · too many to draw at once
+                    </>
+                  ) : (
+                    'Nothing matches the filters'
+                  )}
+                </p>
+                <p>Search a record or a model to start, or pick models in the rail.</p>
+              </>
+            ) : null
+          }
           focusSearchOnMount={isCanvasEmpty}
           labelMode={labelMode}
           onLabelModeChange={setLabelMode}

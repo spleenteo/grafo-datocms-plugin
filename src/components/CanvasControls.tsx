@@ -50,14 +50,24 @@ const ShuffleIcon = () => (
   </Icon>
 );
 
+export interface SearchResults {
+  models: { index: number; name: string; count: number }[];
+  records: { id: string; title: string; modelName: string }[];
+  /** Matching records, listed or not. */
+  recordCount: number;
+}
+
 interface Props {
   query: string;
   onQueryChange: (query: string) => void;
   onSearchEnter: () => void;
   matchCount: number;
   /** Matches to pick from, shown under the search when it reaches every record; null: none. */
-  results: { id: string; title: string; modelName: string }[] | null;
+  results: SearchResults | null;
   onPickResult: (id: string) => void;
+  onPickModel: (model: number) => void;
+  /** Shown above the search, which then sits in the middle of the canvas (empty canvas). */
+  centerIntro: ReactNode | null;
   /** Focus the search field once, when the controls mount. */
   focusSearchOnMount: boolean;
   labelMode: LabelMode;
@@ -100,6 +110,7 @@ export default function CanvasControls(props: Props) {
   }, []);
   const results = query.trim() ? props.results : null;
 
+
   const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // Keep node keyboard handlers and the workspace Escape out of the input.
     event.stopPropagation();
@@ -111,40 +122,62 @@ export default function CanvasControls(props: Props) {
     }
   };
 
+  const hasResults = results !== null && results.models.length + results.records.length > 0;
+  const search = (
+    <div className={`${styles.search} ${styles.auto}`}>
+      <TextInput
+        id="grafo-search"
+        name="grafo-search"
+        placeholder={props.centerIntro ? 'Search records and models' : 'Search titles'}
+        aria-label={props.centerIntro ? 'Search records and models' : 'Search titles'}
+        value={query}
+        onChange={props.onQueryChange}
+        onKeyDown={onSearchKeyDown}
+        inputRef={inputRef}
+      />
+      {!hasResults && (
+        <p className={styles.matchLine} role="status">
+          {line ?? ''}
+        </p>
+      )}
+      {results !== null && hasResults && (
+        <ul className={styles.results} aria-label="Matching models and records">
+          {results.models.map((m) => (
+            <li key={`m${m.index}`}>
+              <button type="button" onClick={() => props.onPickModel(m.index)}>
+                <span className={styles.resultTitle}>{m.name}</span>
+                <span className={styles.resultModel}>Model · {m.count} records</span>
+              </button>
+            </li>
+          ))}
+          {results.records.map((r) => (
+            <li key={r.id}>
+              <button type="button" onClick={() => props.onPickResult(r.id)}>
+                <span className={styles.resultTitle}>{r.title}</span>
+                <span className={styles.resultModel}>{r.modelName}</span>
+              </button>
+            </li>
+          ))}
+          {results.recordCount > results.records.length && (
+            <li className={styles.resultsMore}>
+              +{results.recordCount - results.records.length} more records
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+
   return (
     <div className={styles.controls}>
-      <div className={`${styles.corner} ${styles.topLeft}`}>
-        <div className={`${styles.search} ${styles.auto}`}>
-          <TextInput
-            id="grafo-search"
-            name="grafo-search"
-            placeholder="Search titles"
-            aria-label="Search titles"
-            value={query}
-            onChange={props.onQueryChange}
-            onKeyDown={onSearchKeyDown}
-            inputRef={inputRef}
-          />
-          <p className={styles.matchLine} role="status">
-            {line ?? ''}
-          </p>
-          {results !== null && results.length > 0 && (
-            <ul className={styles.results} aria-label="Matching records">
-              {results.map((r) => (
-                <li key={r.id}>
-                  <button type="button" onClick={() => props.onPickResult(r.id)}>
-                    <span className={styles.resultTitle}>{r.title}</span>
-                    <span className={styles.resultModel}>{r.modelName}</span>
-                  </button>
-                </li>
-              ))}
-              {matchCount > results.length && (
-                <li className={styles.resultsMore}>+{matchCount - results.length} more</li>
-              )}
-            </ul>
-          )}
+      {props.centerIntro ? (
+        <div className={styles.center}>
+          <div className={styles.intro}>{props.centerIntro}</div>
+          {search}
         </div>
-      </div>
+      ) : (
+        <div className={`${styles.corner} ${styles.topLeft}`}>{search}</div>
+      )}
 
       <div className={`${styles.corner} ${styles.topRight}`}>
         <div className={styles.auto} role="group" aria-label="Labels">

@@ -49,6 +49,40 @@
   width: 240px;
 }
 
+/* Empty canvas: the search is the starting point, in the middle. */
+.center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.center .search {
+  width: min(400px, 100%);
+  text-align: left;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-m);
+  color: var(--color--ink-subtle);
+}
+
+.intro p {
+  margin: 0;
+}
+
+.intro strong {
+  color: var(--color--ink);
+}
+
 .matchLine {
   margin: var(--spacing-xs) 0 0;
   font-size: var(--font-size-xs);
