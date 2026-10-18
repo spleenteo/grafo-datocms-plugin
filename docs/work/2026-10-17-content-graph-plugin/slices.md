@@ -171,6 +171,12 @@ _Split from the former V5 on 2026-10-18 (too many tasks for one plan): search, l
 
 ## V6 — Search and view controls
 
+**Constraints from the V5 final review**
+- Refresh: `loadGraph` needs a bypass of its module memo (`fresh` option); `GraphPage` keeps the last graph on screen with a `refreshing` state instead of swapping in the spinner; the workspace key must survive a refresh, and filters remap by `apiKey`.
+- `update()` always fits on the next `end`: add a `userMoved` flag set in the zoom handler when `event.sourceEvent` exists, and skip the fit when it's set (reset by the fit button).
+- Distance and charge are closure constants in `renderGraph`; add `setDistance` and `relayout` handle methods; label modes via a root-level class on the svg next to the existing `.show` logic. Node focus/blur already drives the hover focus (trigger for "on focus").
+- `paint()` touches every node and link per hover; profile on >1000 nodes before search highlighting goes through it.
+
 **In**
 - Title search with match count; Enter focuses the first match.
 - View controls: label mode (smart / all / on focus), node-distance slider, zoom in/out, fit, relayout (design: controls bottom-right, label mode top-right, search top-left).
