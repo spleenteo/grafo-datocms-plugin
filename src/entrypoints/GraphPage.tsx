@@ -151,6 +151,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
           refreshError={state.refreshError}
           onReload={reload}
           startingModelApiKeys={settings.startingModelApiKeys}
+          storageKey={`grafo:filters:v1:${ctx.site.id}:${ctx.environment}:${ctx.currentUser.type}:${ctx.currentUser.id}`}
           ctx={ctx}
         />
       </Canvas>

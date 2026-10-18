@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { expandAround } from '../data/expandAround';
 import { filterGraph } from '../data/filterGraph';
 import { startingFilters } from '../data/startingFilters';
+import { deserializeFilters, serializeFilters, startingKeyOf } from '../data/storedFilters';
 import { remapFilters } from '../data/remapFilters';
 import { nodeIndexById } from '../data/relationsOf';
 import type { Graph } from '../data/types';
@@ -24,6 +25,8 @@ interface Props {
   refreshError: string | null;
   onReload: () => void;
   startingModelApiKeys: string[];
+  /** localStorage key for this site, environment and user; null disables remembering. */
+  storageKey: string | null;
   ctx: RenderPageCtx;
 }
 
@@ -42,9 +45,22 @@ export default function GraphWorkspace({
   refreshError,
   onReload,
   startingModelApiKeys,
+  storageKey,
   ctx,
 }: Props) {
-  const [storedFilters, setFilters] = useState(() => startingFilters(graph, startingModelApiKeys));
+  const [storedFilters, setFilters] = useState(() => {
+    const startingKey = startingKeyOf(startingModelApiKeys);
+    try {
+      const raw = storageKey === null ? null : window.localStorage.getItem(storageKey);
+      if (raw !== null) {
+        const restored = deserializeFilters(graph, JSON.parse(raw), startingKey);
+        if (restored) return restored;
+      }
+    } catch {
+      // Blocked or partitioned storage, or unparsable JSON: start from the configured models.
+    }
+    return startingFilters(graph, startingModelApiKeys);
+  });
   const startingKeysRef = useRef(startingModelApiKeys);
   useEffect(() => {
     startingKeysRef.current = startingModelApiKeys;
@@ -59,6 +75,22 @@ export default function GraphWorkspace({
     setPrevGraph(graph);
     setFilters(filters);
   }
+  // Remember the filters. At the starting filters the key is removed instead,
+  // so "Reset filters" forgets what was stored and a plain visit stores nothing.
+  useEffect(() => {
+    if (storageKey === null) return;
+    try {
+      const startingKey = startingKeyOf(startingKeysRef.current);
+      const json = JSON.stringify(serializeFilters(graph, filters, startingKey));
+      const atStart = JSON.stringify(
+        serializeFilters(graph, startingFilters(graph, startingKeysRef.current), startingKey),
+      );
+      if (json === atStart) window.localStorage.removeItem(storageKey);
+      else window.localStorage.setItem(storageKey, json);
+    } catch {
+      // Blocked storage: filters just aren't remembered.
+    }
+  }, [graph, filters, storageKey]);
   const data = useMemo(() => prepareSimulation(graph), [graph]);
   const filtered = useMemo(() => filterGraph(graph, filters), [graph, filters]);
   const modelName = useCallback(
