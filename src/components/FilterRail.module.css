@@ -114,3 +114,26 @@
   font-size: var(--font-size-s);
   color: var(--color--ink-subtle);
 }
+
+/* Table-like header over the model rows; each label sorts by its column. */
+.columns {
+  composes: sectionHeading from './shared.module.css';
+  display: flex;
+  justify-content: space-between;
+  padding: 0 var(--spacing-s);
+}
+
+.column {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.column:hover,
+.columnActive {
+  color: var(--color--ink);
+}

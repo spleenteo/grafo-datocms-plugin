@@ -67,6 +67,32 @@ function GroupHeader({
   );
 }
 
+// Column header that sorts the list: name ascending, records descending.
+function SortHeader({
+  label,
+  sort,
+  current,
+  onSort,
+}: {
+  label: string;
+  sort: ModelSort;
+  current: ModelSort;
+  onSort: (sort: ModelSort) => void;
+}) {
+  const isActive = sort === current;
+  return (
+    <button
+      type="button"
+      className={`${styles.column} ${isActive ? styles.columnActive : ''}`}
+      aria-pressed={isActive}
+      onClick={() => onSort(sort)}
+    >
+      {label}
+      {isActive && <span aria-hidden="true">{sort === 'name' ? ' ↑' : ' ↓'}</span>}
+    </button>
+  );
+}
+
 function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp }: Props) {
   const set = (patch: Partial<Filters>) => onChange((prev) => ({ ...prev, ...patch }));
   const toggleIndex = (key: 'models' | 'fields', value: number) =>
@@ -82,10 +108,16 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
     () => orderModels(graph.models, sort, hasListControls ? query : ''),
     [graph, sort, query, hasListControls],
   );
-  const isTruncated =
-    !query.trim() && !showsAll && modelOrder.length > MODEL_ROWS + MODEL_ROWS_SLACK;
-  const shownModels = isTruncated ? modelOrder.slice(0, MODEL_ROWS) : modelOrder;
-  const canCollapse = !query.trim() && showsAll && modelOrder.length > MODEL_ROWS + MODEL_ROWS_SLACK;
+  // Collapsed: the first rows plus every enabled model further down, so a
+  // filter that is on never hides behind "Show all".
+  const collapsed = useMemo(
+    () => modelOrder.filter((m, i) => i < MODEL_ROWS || filters.models.has(m)),
+    [modelOrder, filters.models],
+  );
+  const hiddenCount = modelOrder.length - collapsed.length;
+  const canTruncate = !query.trim() && hiddenCount > MODEL_ROWS_SLACK;
+  const isTruncated = canTruncate && !showsAll;
+  const shownModels = isTruncated ? collapsed : modelOrder;
   const changeSort = (next: ModelSort) => {
     setSort(next);
     try {
@@ -132,20 +164,15 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
               onChange={setQuery}
               onKeyDown={onSearchKeyDown}
             />
-            <ButtonGroup>
-              {(['count', 'name'] as const).map((value) => (
-                <ButtonGroupButton
-                  key={value}
-                  selected={sort === value}
-                  onClick={() => changeSort(value)}
-                >
-                  {value === 'count' ? 'Count' : 'Name'}
-                </ButtonGroupButton>
-              ))}
-            </ButtonGroup>
           </>
         )}
         <div className={styles.models}>
+          {hasListControls && (
+            <div className={styles.columns}>
+              <SortHeader label="Model" sort="name" current={sort} onSort={changeSort} />
+              <SortHeader label="Records" sort="count" current={sort} onSort={changeSort} />
+            </div>
+          )}
           {modelOrder.length === 0 && <p className={styles.empty}>No models match</p>}
           {shownModels.map((m) => {
             const isOn = filters.models.has(m);
@@ -172,7 +199,7 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
             );
           })}
         </div>
-        {(isTruncated || canCollapse) && (
+        {canTruncate && (
           <Button buttonType="muted" buttonSize="xxs" onClick={() => setShowsAll(isTruncated)}>
             {isTruncated ? `Show all (${modelOrder.length})` : 'Show fewer'}
           </Button>
