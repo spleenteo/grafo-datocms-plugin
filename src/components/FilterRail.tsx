@@ -10,6 +10,7 @@ interface Props {
   colorIndex: number[];
   filters: Filters;
   onChange: (update: (prev: Filters) => Filters) => void;
+  onHelp: () => void;
 }
 
 const STATUSES: { status: NodeStatus; label: string }[] = [
@@ -54,7 +55,7 @@ function GroupHeader({
   );
 }
 
-export default function FilterRail({ graph, colorIndex, filters, onChange }: Props) {
+export default function FilterRail({ graph, colorIndex, filters, onChange, onHelp }: Props) {
   const set = (patch: Partial<Filters>) => onChange((prev) => ({ ...prev, ...patch }));
   const toggle = (key: 'models' | 'statuses' | 'fields', value: number | NodeStatus) =>
     onChange((prev) => ({ ...prev, [key]: toggled(prev[key] as ReadonlySet<number | NodeStatus>, value) }));
@@ -196,9 +197,14 @@ export default function FilterRail({ graph, colorIndex, filters, onChange }: Pro
         />
       </section>
 
-      <Button buttonType="muted" buttonSize="s" onClick={() => onChange(() => allFilters(graph))}>
-        Reset filters
-      </Button>
+      <div className={styles.actions}>
+        <Button buttonType="muted" buttonSize="s" onClick={() => onChange(() => allFilters(graph))}>
+          Reset filters
+        </Button>
+        <Button buttonType="muted" buttonSize="s" onClick={onHelp}>
+          Help
+        </Button>
+      </div>
     </aside>
   );
 }

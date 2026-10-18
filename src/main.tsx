@@ -6,6 +6,7 @@ import 'datocms-react-ui/styles.css';
 import './graph/modelColors.css';
 
 const LazyGraphPage = lazy(() => import('./entrypoints/GraphPage'));
+const LazyHelpModal = lazy(() => import('./entrypoints/HelpModal'));
 
 connect({
   mainNavigationTabs() {
@@ -24,6 +25,17 @@ connect({
         render(
           <Suspense fallback={<Spinner size={60} placement="centered" />}>
             <LazyGraphPage ctx={ctx} />
+          </Suspense>,
+        );
+        break;
+    }
+  },
+  renderModal(modalId, ctx) {
+    switch (modalId) {
+      case 'help':
+        render(
+          <Suspense fallback={<Spinner size={30} placement="centered" />}>
+            <LazyHelpModal ctx={ctx} />
           </Suspense>,
         );
         break;

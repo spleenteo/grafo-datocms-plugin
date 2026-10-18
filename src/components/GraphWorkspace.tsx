@@ -146,6 +146,9 @@ export default function GraphWorkspace({
         colorIndex={data.colorIndex}
         filters={filters}
         onChange={setFilters}
+        onHelp={() =>
+          void ctxRef.current.openModal({ id: 'help', title: 'Grafo help', width: 'm', initialHeight: 480 })
+        }
       />
       <div className={styles.stage}>
         <GraphView

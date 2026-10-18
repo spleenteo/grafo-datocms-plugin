@@ -1,0 +1,52 @@
+.root {
+  padding: var(--spacing-l);
+  color: var(--color--ink);
+  font-size: var(--font-size-s);
+}
+
+.heading {
+  margin: 0 0 var(--spacing-s);
+  font-size: var(--font-size-l);
+}
+
+.section {
+  margin-bottom: var(--spacing-l);
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.table td {
+  padding: var(--spacing-xs) var(--spacing-s) var(--spacing-xs) 0;
+  vertical-align: top;
+}
+
+.table td:first-child {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.kbd {
+  display: inline-block;
+  padding: 1px var(--spacing-s);
+  border: 1px solid var(--color--border);
+  border-radius: 4px;
+  background: var(--color--surface-muted);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--spacing-l);
+}
+
+.list li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.text {
+  margin: 0;
+}
