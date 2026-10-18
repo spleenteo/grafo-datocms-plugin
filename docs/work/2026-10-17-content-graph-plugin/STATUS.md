@@ -2,7 +2,7 @@
 status: open
 phase: slice
 slice: V8
-step: close
+step: execute
 work: content-graph-plugin
 stack: generic
 updated: 2026-10-18
