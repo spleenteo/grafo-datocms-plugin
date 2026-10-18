@@ -96,3 +96,10 @@ Open questions for the owner before planning:
 - `src/data/modelList.ts`: sort name without leading emoji/symbols, accent-insensitive search on name and api key, deterministic order.
 - Rail: search field, table-like "Model" / "Records" headers that sort (choice in `localStorage` `grafo:modelSort:v1`), first 10 rows plus every enabled model, "Show all (N)" only when more than 3 would stay hidden.
 - Owner change after the first check: the ButtonGroup was too big (now column headers), and enabled models must never hide behind the collapse.
+
+### V3 — done on 2026-10-18
+
+- `GraphField` is per model (`model`, `label`); identity `isPseudo:itemTypeId:apiKey`. Stored filters v2 store `[modelApiKey, fieldApiKey, isPseudo]`; v1 payloads still load (an off api key switches it off in every model).
+- Rail: fields grouped by model in the models list order, only for enabled models; search above 10 fields; collapsible; All / None act on the listed fields only.
+- Added after the owner's first check: with relations outside shown (both/in), fields of other models that link into the selection get a "Linking into the selection" block, so those edges can be switched off; every chip names its target models (`fieldStats.ts`), restricted to the selected ones for incoming fields.
+- Inspector shows field labels, rows sorted by label.

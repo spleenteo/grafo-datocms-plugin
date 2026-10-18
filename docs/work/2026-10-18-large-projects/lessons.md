@@ -2,3 +2,5 @@
 - d3 joins: select direct children (`selectChildren`) when the joined elements contain elements of the same tag; nested children inherit the datum.
 - d3-zoom fires `start/zoom/end` synchronously on `zoom.transform`: every variable its handlers read must be declared before the first `svg.call(zoom.transform, …)`.
 - d3-drag stops `mousedown` propagation on draggable nodes: listen on the svg (`pointerdown`) for anything that must see every press.
+- A rail hint must answer the editor's question in place ("→ Apartments"), not summarise ("→ 3 models"): restrict it to what the current selection makes relevant.
+- Examples in reports come from my CLI data, which can differ from the owner's session (role, excluded models): say which data a claim is based on.

@@ -1,8 +1,8 @@
 ---
 status: open
 phase: slice
-slice: V3
-step: close
+slice: V4
+step: shape
 work: large-projects
 stack: react
 updated: 2026-10-18
@@ -21,7 +21,7 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 - [x] V1 — Canvas at scale: hover intent, constant label size, label budget
 - [x] V1.1 — Zoom strokes and neighbour labels
 - [x] V2 — Models list: search, sort, show all
-- [ ] V3 — Relation fields per model: "Model › Field" labels, scoped to visible models, search
+- [x] V3 — Relation fields per model: "Model › Field" labels, scoped to visible models, search
 - [ ] V4 — Exploration mode for large projects (to shape with the owner)
 
 ## Log
@@ -34,3 +34,4 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 - 2026-10-18 — V2 execute — search, Count/Name sort, Show all; controller reviewed the diff — owner check — — —
 - 2026-10-18 — V2 close — owner checked; column-header sort, enabled models stay visible — V3 plan — — —
 - 2026-10-18 — V3 execute — per-model fields with labels, stored filters v2 (reads v1), rail grouped by model with search/collapse; opus review of data PASS — owner check — — —
+- 2026-10-18 — V3 close — owner checked; incoming fields of outside models, target hints — V4 to shape with the owner — — —
