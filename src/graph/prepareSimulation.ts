@@ -17,10 +17,10 @@ export interface SimLink extends SimulationLinkDatum<SimNode> {
   edge: number;
 }
 
-/** Radius relative to the most-connected node of the set: 4 (no relations) to 20 (the max). */
+/** Radius relative to the most-connected node of the set: 3 (no relations) to 24 (the max); area follows the relation count. */
 export function relativeRadius(degree: number, maxDegree: number): number {
-  if (maxDegree <= 0) return 4;
-  return 4 + 16 * Math.sqrt(degree / maxDegree);
+  if (maxDegree <= 0) return 3;
+  return 3 + 21 * Math.sqrt(degree / maxDegree);
 }
 
 export function prepareSimulation(graph: Graph): {

@@ -84,8 +84,8 @@ describe('prepareSimulation', () => {
     const edges = Array.from({ length: 100 }, (_, i) => ({ source: 0, target: i + 1, field: 0 }));
     const res = prepareSimulation(graph({ nodes, edges }));
     expect(res.nodes[0].degree).toBe(100);
-    expect(res.nodes[0].r).toBe(20);
-    expect(res.nodes[1].r).toBeCloseTo(4 + 16 * 0.1);
+    expect(res.nodes[0].r).toBe(24);
+    expect(res.nodes[1].r).toBeCloseTo(3 + 21 * 0.1);
   });
 
   it('orders colours by count desc then apiKey, including empty models', () => {
@@ -101,19 +101,19 @@ describe('prepareSimulation', () => {
 });
 
 describe('relativeRadius', () => {
-  it('is 4 with no relations', () => {
-    expect(relativeRadius(0, 10)).toBe(4);
+  it('is 3 with no relations', () => {
+    expect(relativeRadius(0, 10)).toBe(3);
   });
 
-  it('is 20 at the max degree', () => {
-    expect(relativeRadius(10, 10)).toBe(20);
+  it('is 24 at the max degree', () => {
+    expect(relativeRadius(10, 10)).toBe(24);
   });
 
-  it('is 12 at a quarter of the max degree', () => {
-    expect(relativeRadius(5, 20)).toBe(12);
+  it('is 13.5 at a quarter of the max degree', () => {
+    expect(relativeRadius(5, 20)).toBe(13.5);
   });
 
-  it('is 4 when the max degree is 0', () => {
-    expect(relativeRadius(0, 0)).toBe(4);
+  it('is 3 when the max degree is 0', () => {
+    expect(relativeRadius(0, 0)).toBe(3);
   });
 });
