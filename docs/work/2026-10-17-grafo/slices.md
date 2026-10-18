@@ -285,9 +285,10 @@ _Added 2026-10-18 after a full read-only codebase review (Fable): `reviews/2026-
 ## V10 — Marketplace release
 
 **In**
-- README (dev-oriented, terse): what it does, permissions, API usage, local development.
-- Cover image and screenshots designed in `content-graph-dato-design.pen`.
-- `package.json` marketplace metadata (`datoCmsPlugin` title, description, cover, preview), license, keywords.
+- README (dev-oriented, terse; local-development sections removed by the owner on purpose), website link.
+- Cover, preview video and screenshots from `design/content-graph-dato-design.pen` and the owner's exports (`assets/`).
+- `package.json` marketplace metadata (`datoCmsPlugin` title, cover, preview), license, keywords, repository.
+- Changelog and version, work archived, `grafo` merged into `main`, pushed.
 - npm publish (asks before publishing).
 
 **Out**

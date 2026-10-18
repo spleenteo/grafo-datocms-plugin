@@ -2,6 +2,8 @@
 
 DatoCMS plugin that draws the records of a project and the links between them as an interactive graph. It adds a **Grafo** tab to the main navigation. Each node is a record, and clicking a node shows its incoming and outgoing relations and opens the record in the editor.
 
+Website: https://spleenteo.github.io/grafo-datocms-plugin/
+
 ![Grafo: full project view with a search](https://raw.githubusercontent.com/spleenteo/grafo-datocms-plugin/main/assets/screenshots/search.png)
 
 Demo video: [`assets/preview.mp4`](https://raw.githubusercontent.com/spleenteo/grafo-datocms-plugin/main/assets/preview.mp4)
