@@ -17,7 +17,7 @@
   top: var(--spacing-s);
   left: var(--spacing-s);
   font-size: var(--font-size-s);
-  color: var(--color--ink-muted);
+  color: var(--color--ink-subtle);
   pointer-events: none;
 }
 
