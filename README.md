@@ -1,8 +1,8 @@
-# Content Graph
+# Grafo
 
 DatoCMS plugin that renders record relations as an interactive graph.
 
-Status: work in progress. Currently an empty full-page placeholder behind a "Content Graph" tab in the main navigation.
+Status: work in progress. A "Grafo" tab in the main navigation loads every record and draws the relations; clicking a node opens the record. Filters, inspector and search are coming.
 
 ## Local development
 
@@ -24,7 +24,7 @@ Install as a private plugin:
 | `npm run dev` | Vite dev server |
 | `npm run build` | Typecheck, then production build to `dist/` |
 | `npm run typecheck` | `tsc -b` |
-| `npm test` | Vitest (passes with no tests) |
+| `npm test` | Vitest |
 | `npm run preview` | Serve the production build |
 
 ## License

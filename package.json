@@ -1,14 +1,14 @@
 {
   "name": "datocms-plugin-content-graph",
   "version": "0.1.0",
-  "description": "Render DatoCMS record relations as a graph",
+  "description": "Grafo: DatoCMS record relations as an interactive graph",
   "type": "module",
   "keywords": [
     "datocms-plugin"
   ],
   "homepage": "https://github.com/spleenteo/content-graph-datocms-plugin",
   "datoCmsPlugin": {
-    "title": "Content Graph",
+    "title": "Grafo",
     "entryPoint": "dist/index.html",
     "permissions": [
       "currentUserAccessToken"

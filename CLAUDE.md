@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-V1 done: empty full-page plugin (tab "Content Graph" in the main navigation, `pageId` `graph`) rendering a themed placeholder. No CMA calls yet. Entry: `src/main.tsx`, page: `src/entrypoints/GraphPage.tsx`. Graph, data layer and filters are not built yet.
+Product name: **Grafo** (renamed from "Content Graph" on 2026-10-18; the repo, npm package name and work slug keep the old name). V1–V3 done: tab "Grafo" in the main navigation (`pageId` `graph`), data layer in `src/data/` (CMA loading + graph building), D3 view in `src/graph/` + `src/components/GraphView.tsx`, page `src/entrypoints/GraphPage.tsx`. Filters, inspector and search are not built yet. Work state: `docs/work/2026-10-17-content-graph-plugin/STATUS.md`.
 
 Commands:
 
@@ -13,7 +13,7 @@ Commands:
 
 ## Goal
 
-Content Graph: a DatoCMS plugin that shows record relations as an interactive graph. Editors pick models/statuses and see incoming and outgoing links between records. Every node links to its record in the DatoCMS editor.
+Grafo: a DatoCMS plugin that shows record relations as an interactive graph. Editors pick models/statuses and see incoming and outgoing links between records. Every node links to its record in the DatoCMS editor.
 
 ## Hard requirements (from `Idea.md`)
 
@@ -25,7 +25,7 @@ Content Graph: a DatoCMS plugin that shows record relations as an interactive gr
 - Never commit DatoCMS tokens or any user secret.
 - Never commit `poc/` (add it to `.gitignore`).
 - Docs/README tone: developer-oriented, terse.
-- Use `content-graph-dato-design.pen` (via the `pencil` MCP tools only, it is encrypted) for discussing visual details and for the marketplace cover image.
+- Use `content-graph-dato-design.pen` (via the `pencil` MCP tools only, it is encrypted) for discussing visual details and for the marketplace cover image. It holds the Grafo landing (with the plugin mockup: filter rail, canvas, inspector), cover and logo; PNG exports of cover and logo live in `design/export/`.
 
 ## POC as reference (`poc/gestart-graph.html`)
 

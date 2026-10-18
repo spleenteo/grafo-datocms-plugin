@@ -10,7 +10,7 @@ connect({
   mainNavigationTabs() {
     return [
       {
-        label: 'Content Graph',
+        label: 'Grafo',
         icon: 'diagram-project',
         placement: ['after', 'content'],
         pointsTo: { pageId: 'graph' },

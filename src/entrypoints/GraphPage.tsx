@@ -61,7 +61,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     return (
       <Canvas ctx={ctx} noAutoResizer>
         <div className={styles.fullPage}>
-          <h1 className={styles.title}>Content Graph</h1>
+          <h1 className={styles.title}>Grafo</h1>
           <div className={styles.stage}>
             <GraphView data={data} modelName={modelName} ctx={ctx} />
             <p className={styles.overlay}>
@@ -77,7 +77,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   return (
     <Canvas ctx={ctx} noAutoResizer>
       <div className={styles.page}>
-        <h1 className={styles.title}>Content Graph</h1>
+        <h1 className={styles.title}>Grafo</h1>
         {body}
       </div>
     </Canvas>
