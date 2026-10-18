@@ -1,8 +1,8 @@
 ---
 status: open
 phase: slice
-slice: V8
-step: execute
+slice: V10
+step: plan
 work: grafo
 stack: generic
 updated: 2026-10-18
@@ -27,8 +27,8 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - [x] V5 — Role isolation, selection, inspector
 - [x] V6 — Search and view controls
 - [x] V7 — UI tweaks
-- [ ] V8 — Starting models
-- [ ] V9 — Hardening
+- [x] V8 — Starting models
+- [x] V9 — Hardening
 - [ ] V10 — Marketplace release
 
 ## Log
@@ -48,3 +48,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-18 — rename — work slug, repo, npm name and branch renamed to Grafo (owner) — V8 close (owner check pending) — — —
 - 2026-10-18 — V9 opened — hardening from the Fable review; V8 still at close (owner check pending) — V9 execute — — —
 - 2026-10-18 — V9 execute — 5 tasks + final review (fixes 6d3eb88); behaviour unchanged, Gestart 197/18/347 3 requests; buildGraph −8% on x40; renderer hover/focus O(degree) — V9 close (owner check) — — —
+- 2026-10-18 — V8 + V9 close — owner check OK; pushed — V10 plan (release) — — —

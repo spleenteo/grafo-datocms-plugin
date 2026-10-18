@@ -253,6 +253,12 @@ _Added 2026-10-18 from the owner's review after V6._
 **Done**
 - With "Testimonianza" as the only starting model on Gestart, Grafo opens on the 7 testimonials plus their linked records as context. Gate green.
 
+**V8 — done on 2026-10-18**
+- Plugin settings (`startingModelApiKeys`, `excludedModelApiKeys` defaulting to `schema_migration` when never saved) with a config screen; `startingFilters` for opening and Reset; excluded models dropped after the read-access check (`visibleModelPlan`, tested); node area ∝ relations, radius 3–24.
+- Owner check rounds: expansion around the selection (walk record to record), inspector with prominent model name, Open record on top and record details, editor filters remembered per user in `localStorage`, default distance then automatic distance from visible count and canvas size, every view change centred, Grafo tab moved after Configuration, private plugin renamed Grafo, cover added.
+- Verified on Gestart: 197 / 18 / 347, 3 requests, no `schema_migration` request; Testimonianza start → 7 + 6 context; owner check OK.
+- Rulings: centring always on view changes (supersedes V6's no-jump after wheel zoom; selection keeps its focus); stored filters ignored once when the admin changes the starting models; Reset clears them.
+
 ## V9 — Hardening
 
 _Added 2026-10-18 after a full read-only codebase review (Fable): `reviews/2026-10-18-fable-codebase-review.md`. No Critical findings; security and role isolation verified clean._
@@ -269,6 +275,12 @@ _Added 2026-10-18 after a full read-only codebase review (Fable): `reviews/2026-
 
 **Done**
 - Gate green; same graph on Gestart (197 / 18 / 347, 3 requests); owner check shows no behaviour change; build time measured.
+
+**V9 — done on 2026-10-18**
+- Findings of the Fable review applied (see `reviews/`): duplication and dead code removed, `extractLinks` relation-only, renderer hover/focus/follow O(degree) via an adjacency map and diffed paints, copy fixes ("API calls", permission message, config note), helpers + tests for the load memo, generation guard and view reconcile. 131 tests.
+- Measured: graph unchanged on Gestart (197 / 18 / 347, 3 requests); `buildGraph` −8% on a ×40 synthetic set (12.3 → 11.3 ms) — the review's 3–5× estimate didn't hold, the build was already fast.
+- Skipped with reason: synchronous pre-tick (P4), bundle (P10), paint/paintAll equivalence test (needs jsdom; D3 rendering not tested by rule).
+- Owner: README sections removed on purpose; demo media fine to publish.
 
 ## V10 — Marketplace release
 

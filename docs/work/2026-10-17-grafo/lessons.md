@@ -15,3 +15,5 @@
 - State that survives a reload must be keyed by what defines the data (environment + permissions), never by a constant: a constant key leaks view state across roles.
 - Visual feedback on the graph needs the owner's eyes: plan a short manual round per slice and expect fixes; measure layout issues with a headless d3-force run on Gestart before changing formulas.
 - Sizes and fits must follow what is on screen: relative node radius against the visible set, fit bounds including the labels.
+- Review estimates are hypotheses: measure before claiming a speed-up (V9's 3–5× build estimate was 8%).
+- Owner edits left uncommitted in the working tree are theirs: commit them only with the change they belong to, and say so.
