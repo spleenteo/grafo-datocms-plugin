@@ -28,6 +28,9 @@ describe('searchTitles', () => {
   it('includes any visible id (core or context) and excludes hidden', () => {
     expect(searchTitles(graph, visible, 'hello')).not.toContain('4');
   });
+  it('searches every record with a null scope', () => {
+    expect(searchTitles(graph, null, 'hello')).toEqual(['1', '3', '4']);
+  });
   it('trims the query', () => {
     expect(searchTitles(graph, visible, '  WORLD ')).toEqual(['1']);
   });

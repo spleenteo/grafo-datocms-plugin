@@ -12,10 +12,10 @@ function titlesLower(graph: Graph): string[] {
   return lower;
 }
 
-/** Ids of visible nodes whose title contains the query, in nodes order. */
+/** Ids of nodes in scope (null: every record) whose title contains the query, in nodes order. */
 export function searchTitles(
   graph: Graph,
-  visibleIds: ReadonlySet<string>,
+  scopeIds: ReadonlySet<string> | null,
   query: string,
 ): string[] {
   const needle = query.trim().toLowerCase();
@@ -23,7 +23,7 @@ export function searchTitles(
   const lower = titlesLower(graph);
   const ids: string[] = [];
   graph.nodes.forEach((n, i) => {
-    if (visibleIds.has(n.id) && lower[i].includes(needle)) ids.push(n.id);
+    if ((scopeIds === null || scopeIds.has(n.id)) && lower[i].includes(needle)) ids.push(n.id);
   });
   return ids;
 }
