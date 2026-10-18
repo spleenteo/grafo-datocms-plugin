@@ -108,3 +108,9 @@
   display: flex;
   gap: var(--spacing-s);
 }
+
+.empty {
+  margin: 0;
+  font-size: var(--font-size-s);
+  color: var(--color--ink-subtle);
+}

@@ -1,5 +1,6 @@
-import { Button, ButtonGroup, ButtonGroupButton, SwitchField } from 'datocms-react-ui';
-import { memo, useMemo } from 'react';
+import { Button, ButtonGroup, ButtonGroupButton, SwitchField, TextInput } from 'datocms-react-ui';
+import { memo, useMemo, useState, type KeyboardEvent } from 'react';
+import { orderModels, type ModelSort } from '../data/modelList';
 import { fieldLabel } from '../data/types';
 import { allFilters, type Filters } from '../data/filterGraph';
 import type { Graph, NodeStatus } from '../data/types';
@@ -15,6 +16,19 @@ interface Props {
   onChange: (update: (prev: Filters) => Filters) => void;
   resetFilters: () => Filters;
   onHelp: () => void;
+}
+
+// Rows shown before "Show all"; a list only a few rows longer is shown whole.
+const MODEL_ROWS = 10;
+const MODEL_ROWS_SLACK = 3;
+const SORT_KEY = 'grafo:modelSort:v1';
+
+function readSort(): ModelSort {
+  try {
+    return localStorage.getItem(SORT_KEY) === 'name' ? 'name' : 'count';
+  } catch {
+    return 'count';
+  }
 }
 
 const DIRECTIONS: { direction: Filters['direction']; label: string }[] = [
@@ -60,10 +74,31 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
   const toggleStatus = (value: NodeStatus) =>
     onChange((prev) => ({ ...prev, statuses: toggled(prev.statuses, value) }));
 
+  const [sort, setSort] = useState<ModelSort>(readSort);
+  const [query, setQuery] = useState('');
+  const [showsAll, setShowsAll] = useState(false);
+  const hasListControls = graph.models.length > MODEL_ROWS;
   const modelOrder = useMemo(
-    () => graph.models.map((_, i) => i).sort((a, b) => colorIndex[a] - colorIndex[b]),
-    [graph, colorIndex],
+    () => orderModels(graph.models, sort, hasListControls ? query : ''),
+    [graph, sort, query, hasListControls],
   );
+  const isTruncated =
+    !query.trim() && !showsAll && modelOrder.length > MODEL_ROWS + MODEL_ROWS_SLACK;
+  const shownModels = isTruncated ? modelOrder.slice(0, MODEL_ROWS) : modelOrder;
+  const canCollapse = !query.trim() && showsAll && modelOrder.length > MODEL_ROWS + MODEL_ROWS_SLACK;
+  const changeSort = (next: ModelSort) => {
+    setSort(next);
+    try {
+      localStorage.setItem(SORT_KEY, next);
+    } catch {
+      // Private mode or blocked storage: the choice just lasts for this page.
+    }
+  };
+  const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // Keep the workspace Escape and shortcuts out of the input.
+    event.stopPropagation();
+    if (event.key === 'Escape') setQuery('');
+  };
   const statusCounts = useMemo(() => {
     const counts: Record<NodeStatus, number> = { published: 0, updated: 0, draft: 0 };
     for (const n of graph.nodes) counts[n.status] += 1;
@@ -86,8 +121,33 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
           onAll={() => set({ models: allFilters(graph).models })}
           onNone={() => set({ models: new Set() })}
         />
+        {hasListControls && (
+          <>
+            <TextInput
+              id="grafo-model-search"
+              name="grafo-model-search"
+              placeholder="Search models"
+              aria-label="Search models"
+              value={query}
+              onChange={setQuery}
+              onKeyDown={onSearchKeyDown}
+            />
+            <ButtonGroup>
+              {(['count', 'name'] as const).map((value) => (
+                <ButtonGroupButton
+                  key={value}
+                  selected={sort === value}
+                  onClick={() => changeSort(value)}
+                >
+                  {value === 'count' ? 'Count' : 'Name'}
+                </ButtonGroupButton>
+              ))}
+            </ButtonGroup>
+          </>
+        )}
         <div className={styles.models}>
-          {modelOrder.map((m) => {
+          {modelOrder.length === 0 && <p className={styles.empty}>No models match</p>}
+          {shownModels.map((m) => {
             const isOn = filters.models.has(m);
             return (
               <div
@@ -112,6 +172,11 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
             );
           })}
         </div>
+        {(isTruncated || canCollapse) && (
+          <Button buttonType="muted" buttonSize="xxs" onClick={() => setShowsAll(isTruncated)}>
+            {isTruncated ? `Show all (${modelOrder.length})` : 'Show fewer'}
+          </Button>
+        )}
       </section>
 
       <section className={styles.section}>
