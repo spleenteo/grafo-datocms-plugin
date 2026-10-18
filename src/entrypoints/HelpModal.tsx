@@ -24,7 +24,7 @@ export default function HelpModal({ ctx }: { ctx: RenderModalCtx }) {
               {SHORTCUTS.map(([keys, description]) => (
                 <tr key={keys}>
                   <td>
-                    <span className={styles.kbd}>{keys}</span>
+                    <kbd className={styles.kbd}>{keys}</kbd>
                   </td>
                   <td>{description}</td>
                 </tr>

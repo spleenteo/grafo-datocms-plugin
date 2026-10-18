@@ -66,6 +66,7 @@
 
 .link.dim {
   opacity: 0.12;
+  stroke-opacity: 1;
 }
 
 .node.dim {
