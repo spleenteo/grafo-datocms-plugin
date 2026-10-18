@@ -2,7 +2,7 @@
 status: open
 phase: slice
 slice: V4
-step: review
+step: close
 work: large-projects
 stack: react
 updated: 2026-10-18
@@ -35,3 +35,4 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 - 2026-10-18 — V2 close — owner checked; column-header sort, enabled models stay visible — V3 plan — — —
 - 2026-10-18 — V3 execute — per-model fields with labels, stored filters v2 (reads v1), rail grouped by model with search/collapse; opus review of data PASS — owner check — — —
 - 2026-10-18 — V3 close — owner checked; incoming fields of outside models, target hints — V4 to shape with the owner — — —
+- 2026-10-19 — V4 execute — starting policy (1500 / 50% orphans), search over every record on an empty canvas with a result list, empty state; controller reviewed, reframe for unseen picks — owner check — — —
