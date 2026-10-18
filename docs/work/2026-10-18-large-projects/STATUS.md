@@ -1,7 +1,7 @@
 ---
 status: open
 phase: slice
-slice: V2
+slice: V1.1
 step: plan
 work: large-projects
 stack: react
@@ -19,6 +19,7 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 ## Slices
 
 - [x] V1 — Canvas at scale: hover intent, constant label size, label budget
+- [ ] V1.1 — Zoom strokes and neighbour labels
 - [ ] V2 — Models list: search, sort, show all
 - [ ] V3 — Relation fields per model: "Model › Field" labels, scoped to visible models, search
 - [ ] V4 — Exploration mode for large projects (to shape with the owner)

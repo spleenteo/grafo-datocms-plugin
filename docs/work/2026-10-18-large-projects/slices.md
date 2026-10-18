@@ -33,6 +33,16 @@ Reference for the upper end: the DatoCMS site, about 3400 records.
 
 **Gotchas**: `renderGraph.ts` is 1197 lines; label geometry feeds the label-aware fit and the pill drawing (`getBBox`). Keyboard focus must still focus immediately (no dwell).
 
+## V1.1 — Zoom strokes and neighbour labels
+
+**In**
+- Link, dot and ring strokes and the arrowheads keep their on-screen size above k = 1, like labels (same `--label-k`); below 1 they shrink with the graph as today.
+- Smart and On focus label at most 20 neighbours of the focus: the highest-degree ones inside the view. The focus node is always labelled. "All" unchanged.
+
+**Out**: models list (V2).
+
+**Done**: Acacia, Cosmea selected: no more than 20 neighbour labels; zoom to 6×: links stay hairlines, arrows small, no crown of triangles. Gestart unchanged at k ≤ 1.
+
 ## V2 — Models list
 
 **In**
