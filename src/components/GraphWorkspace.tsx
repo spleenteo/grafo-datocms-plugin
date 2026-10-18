@@ -1,6 +1,7 @@
 import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { allFilters, filterGraph } from '../data/filterGraph';
+import { filterGraph } from '../data/filterGraph';
+import { startingFilters } from '../data/startingFilters';
 import { remapFilters } from '../data/remapFilters';
 import { nodeIndexById } from '../data/relationsOf';
 import type { Graph } from '../data/types';
@@ -20,6 +21,7 @@ interface Props {
   isRefreshing: boolean;
   refreshError: string | null;
   onReload: () => void;
+  startingModelApiKeys: string[];
   ctx: RenderPageCtx;
 }
 
@@ -37,9 +39,14 @@ export default function GraphWorkspace({
   isRefreshing,
   refreshError,
   onReload,
+  startingModelApiKeys,
   ctx,
 }: Props) {
-  const [storedFilters, setFilters] = useState(() => allFilters(graph));
+  const [storedFilters, setFilters] = useState(() => startingFilters(graph, startingModelApiKeys));
+  const startingKeysRef = useRef(startingModelApiKeys);
+  useEffect(() => {
+    startingKeysRef.current = startingModelApiKeys;
+  }, [startingModelApiKeys]);
   // A refreshed graph re-indexes models and fields: remap the filters in this
   // same render, so `filterGraph` never pairs the new graph with old indexes.
   const [prevGraph, setPrevGraph] = useState(graph);
@@ -147,6 +154,7 @@ export default function GraphWorkspace({
         filters={filters}
         onChange={setFilters}
         onReframe={() => viewRef.current?.reframe()}
+        resetFilters={() => startingFilters(graph, startingKeysRef.current)}
         onHelp={() =>
           void ctxRef.current.openModal({ id: 'help', title: 'Grafo help', width: 'm', initialHeight: 480 })
         }

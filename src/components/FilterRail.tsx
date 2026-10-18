@@ -11,6 +11,7 @@ interface Props {
   filters: Filters;
   onChange: (update: (prev: Filters) => Filters) => void;
   onReframe: () => void;
+  resetFilters: () => Filters;
   onHelp: () => void;
 }
 
@@ -56,7 +57,7 @@ function GroupHeader({
   );
 }
 
-export default function FilterRail({ graph, colorIndex, filters, onChange, onReframe, onHelp }: Props) {
+export default function FilterRail({ graph, colorIndex, filters, onChange, onReframe, resetFilters, onHelp }: Props) {
   const set = (patch: Partial<Filters>) => onChange((prev) => ({ ...prev, ...patch }));
   const toggle = (key: 'models' | 'statuses' | 'fields', value: number | NodeStatus) =>
     onChange((prev) => ({ ...prev, [key]: toggled(prev[key] as ReadonlySet<number | NodeStatus>, value) }));
@@ -210,7 +211,7 @@ export default function FilterRail({ graph, colorIndex, filters, onChange, onRef
       <div className={styles.actions}>
         <Button buttonType="muted" buttonSize="s" onClick={() => {
             onReframe();
-            onChange(() => allFilters(graph));
+            onChange(() => resetFilters());
           }}>
           Reset filters
         </Button>
