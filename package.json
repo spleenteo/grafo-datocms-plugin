@@ -1,23 +1,39 @@
 {
   "name": "datocms-plugin-grafo",
-  "version": "0.1.0",
-  "description": "Grafo: DatoCMS record relations as an interactive graph",
+  "version": "1.0.0",
+  "description": "Record relations of a DatoCMS project as an interactive graph, filtered by model, status and relation field, with role-aware loading.",
   "type": "module",
   "keywords": [
-    "datocms-plugin"
+    "datocms-plugin",
+    "datocms",
+    "graph",
+    "relations",
+    "d3",
+    "visualization"
   ],
   "homepage": "https://github.com/spleenteo/grafo-datocms-plugin",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spleenteo/grafo-datocms-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/spleenteo/grafo-datocms-plugin/issues"
+  },
+  "author": "spleenteo",
+  "license": "MIT",
   "datoCmsPlugin": {
     "title": "Grafo",
+    "previewImage": "assets/preview.mp4",
+    "coverImage": "assets/cover.png",
     "entryPoint": "dist/index.html",
     "permissions": [
       "currentUserAccessToken"
-    ],
-    "coverImage": "design/export/grafo-cover.png"
+    ]
   },
   "files": [
     "dist",
-    "design/export/grafo-cover.png"
+    "assets/cover.png",
+    "assets/preview.mp4"
   ],
   "scripts": {
     "dev": "vite",
