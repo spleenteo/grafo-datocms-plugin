@@ -140,6 +140,11 @@
   stroke: none;
 }
 
+/* Label-only hover on large graphs: no pill, no dimming. */
+.node.hovered .label {
+  font-weight: 600;
+}
+
 .labelPill {
   fill: var(--color--ink);
   pointer-events: none;

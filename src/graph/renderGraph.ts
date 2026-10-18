@@ -143,6 +143,10 @@ const LABEL_HALF_H = 8;
 const PILL_PAD_X = 6;
 const PILL_PAD_Y = 3;
 const PILL_RADIUS = 4;
+// Pointer hover commits after this dwell, in both directions. Above the node
+// threshold a pointer hover labels the node but does not dim the graph.
+const HOVER_DELAY = 150;
+const HOVER_FOCUS_MAX_NODES = 600;
 const DISTANCE_ALPHA = 0.9;
 const RELAYOUT_SPREAD = 30;
 const SMART_MIN_DEGREE = 10;
@@ -252,6 +256,13 @@ export function renderGraph(
   // Last setSelection() id, visible or not: an update may make it visible.
   let requestedId: string | null = null;
   let hoveredId: string | null = null;
+  // The hover came from keyboard focus: it dims even above HOVER_FOCUS_MAX_NODES.
+  let hoverFromKeyboard = false;
+  // One pending pointer hover change (enter or leave); null target = clear.
+  let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+  let hoverTarget: string | null = null;
+  // A pointer button is down: no raise(), it would swallow the click.
+  let pointerDown = false;
   let labelMode: LabelMode = options.labelMode ?? 'smart';
   let distance = options.distance ?? 1.6;
   let matchIds: ReadonlySet<string> = new Set(options.matchIds ?? []);
@@ -264,6 +275,8 @@ export function renderGraph(
   let focusSet = new Set<string>();
   let paintedSel: string | null = null;
   let paintedFocus: string | null = null;
+  // Node with the label-only `hovered` class (pointer hover on a large graph).
+  let paintedHover: string | null = null;
   let hiEdges = new Set<number>();
   // Hover paints coalesce into one frame.
   let paintFrame: number | null = null;
@@ -419,22 +432,22 @@ export function renderGraph(
         event.preventDefault();
         onSelect(d.id);
       })
-      .on('mouseenter', (_event: MouseEvent, d) => {
+      .on('mouseenter', (_event: MouseEvent, d) => scheduleHover(d.id))
+      .on('mouseleave', () => scheduleHover(null))
+      // A press is a click or a drag, not a dwell.
+      .on('mousedown', () => clearHoverTimer())
+      .on('focus', function (_event: FocusEvent, d) {
+        // A click also focuses the node; only keyboard focus counts as hover.
+        if (!this.matches(':focus-visible')) return;
+        clearHoverTimer();
         hoveredId = d.id;
-        schedulePaint();
-      })
-      .on('mouseleave', (_event: MouseEvent, d) => {
-        if (hoveredId !== d.id) return;
-        hoveredId = null;
-        schedulePaint();
-      })
-      .on('focus', (_event: FocusEvent, d) => {
-        hoveredId = d.id;
+        hoverFromKeyboard = true;
         paint();
       })
       .on('blur', (_event: FocusEvent, d) => {
-        if (hoveredId !== d.id) return;
+        if (!hoverFromKeyboard || hoveredId !== d.id) return;
         hoveredId = null;
+        hoverFromKeyboard = false;
         paint();
       });
     g.each(function (d) {
@@ -485,14 +498,56 @@ export function renderGraph(
     }
   }
 
+  function clearHoverTimer() {
+    if (hoverTimer !== null) clearTimeout(hoverTimer);
+    hoverTimer = null;
+    hoverTarget = null;
+  }
+
+  // Each schedule replaces the pending one, so moving between neighbours keeps
+  // the old hover until the new one commits (no un-dim/re-dim blink).
+  function scheduleHover(target: string | null) {
+    if (destroyed) return;
+    clearHoverTimer();
+    hoverTarget = target;
+    hoverTimer = setTimeout(() => {
+      hoverTimer = null;
+      const next = hoverTarget;
+      hoverTarget = null;
+      if (destroyed) return;
+      hoveredId = next;
+      hoverFromKeyboard = false;
+      schedulePaint();
+    }, HOVER_DELAY);
+  }
+
   // Focus = hovered node, else selected node. Neighbours are the other ends
   // of the focus node's visible links. Everything outside focus + neighbours
   // dims through the root `focusing` class; with no focus, search misses dim
-  // through the node `dim` class.
+  // through the node `dim` class. Above HOVER_FOCUS_MAX_NODES a pointer hover
+  // does not take the focus (dimming is too slow); it is returned as `hover`
+  // and only gets its label.
   function currentFocus() {
     const sel = selectedId !== null && visibleIds.has(selectedId) ? selectedId : null;
     const hov = hoveredId !== null && visibleIds.has(hoveredId) ? hoveredId : null;
-    return { sel, focus: hov ?? sel };
+    const dims = visibleNodes.length <= HOVER_FOCUS_MAX_NODES || hoverFromKeyboard;
+    return { sel, focus: dims ? (hov ?? sel) : sel, hover: dims ? null : hov };
+  }
+
+  // The `hovered` class and label of the label-only hover, diffed like the focus.
+  function paintHover(hover: string | null) {
+    if (hover === paintedHover) return;
+    const old = paintedHover;
+    if (old !== null) nodeEls.get(old)?.g.classList.remove(styles.hovered);
+    if (hover !== null) {
+      const e = nodeEls.get(hover);
+      e?.g.classList.add(styles.hovered);
+      // Draws on top; moving a focused element in the DOM drops keyboard focus.
+      if (e && !pointerDown && e.g !== document.activeElement) select(e.g).raise();
+    }
+    paintedHover = hover;
+    if (old !== null) paintLabel(old);
+    if (hover !== null) paintLabel(hover);
   }
 
   function nearOf(focus: string | null): Set<string> {
@@ -525,7 +580,7 @@ export function renderGraph(
   function paint() {
     cancelPaintFrame();
     if (destroyed) return;
-    const { sel, focus } = currentFocus();
+    const { sel, focus, hover } = currentFocus();
     if (sel !== paintedSel) {
       if (paintedSel !== null) nodeEls.get(paintedSel)?.g.classList.remove(styles.selected);
       if (sel !== null) nodeEls.get(sel)?.g.classList.add(styles.selected);
@@ -554,6 +609,7 @@ export function renderGraph(
       svg.classed(styles.focusing, focus !== null);
       paintedFocus = focus;
     }
+    paintHover(hover);
     placePill(focus, focusChanged);
   }
 
@@ -561,7 +617,7 @@ export function renderGraph(
   function paintAll() {
     cancelPaintFrame();
     if (destroyed) return;
-    const { sel, focus } = currentFocus();
+    const { sel, focus, hover } = currentFocus();
     const near = nearOf(focus);
     const hasQuery = matchIds.size > 0;
     for (const n of visibleNodes) {
@@ -570,9 +626,11 @@ export function renderGraph(
       cl.toggle(styles.selected, n.id === sel);
       cl.toggle(styles.focused, n.id === focus);
       cl.toggle(styles.near, near.has(n.id));
+      cl.toggle(styles.hovered, n.id === hover);
       cl.toggle(styles.dim, hasQuery && !matchIds.has(n.id));
     }
     focusSet = near;
+    paintedHover = hover;
     paintLabels();
     hiEdges = new Set(focus !== null ? (incident.get(focus) ?? []) : []);
     for (const l of visibleLinks) setLinkHi(l.edge, hiEdges.has(l.edge));
@@ -588,7 +646,7 @@ export function renderGraph(
   function placePill(focus: string | null, remeasure: boolean) {
     const e = focus !== null ? nodeEls.get(focus) : undefined;
     // Moving a focused element in the DOM drops keyboard focus.
-    if (e && e.g !== document.activeElement) select(e.g).raise();
+    if (e && !pointerDown && e.g !== document.activeElement) select(e.g).raise();
     if (!e || !e.label) {
       pill?.remove();
       return;
@@ -607,13 +665,14 @@ export function renderGraph(
     pill.setAttribute('height', String(box.height + 2 * PILL_PAD_Y));
   }
 
-  // Labels: focus + neighbours and matches always; "All" is a root class;
+  // Labels: focus + neighbours, the hovered node and matches always; "All" is a root class;
   // "Smart" adds hubs, or everything when zoomed in or the graph is small.
   function labelOn(n: SimNode): boolean {
     const isSmart = labelMode === 'smart';
     const isSmartAll = isSmart && (wasSmartScale || visibleNodes.length <= SMART_MAX_NODES);
     return (
       focusSet.has(n.id) ||
+      paintedHover === n.id ||
       matchIds.has(n.id) ||
       (isSmart && (isSmartAll || n.degree >= SMART_MIN_DEGREE))
     );
@@ -721,6 +780,16 @@ export function renderGraph(
       if (labelMode === 'smart' && (scale >= SMART_MIN_SCALE) !== wasSmartScale) paintLabels();
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);
+  // The release can land outside the svg, hence window.
+  const onPointerDown = () => {
+    pointerDown = true;
+  };
+  const onPointerUp = () => {
+    pointerDown = false;
+  };
+  svg.on('pointerdown', onPointerDown);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
   // d3-zoom swallows the click that ends a pan, so this only fires on a plain
   // background click; node clicks stop propagation.
   svg.on('click', () => {
@@ -996,6 +1065,7 @@ export function renderGraph(
       join(visibleNodes, visibleLinks, visible.contextIds);
       // A removed node never fires mouseleave.
       if (hoveredId !== null && !visibleIds.has(hoveredId)) hoveredId = null;
+      if (hoverTarget !== null && !visibleIds.has(hoverTarget)) clearHoverTimer();
       if (focusTarget !== null && !visibleIds.has(focusTarget)) focusTarget = null;
       paintAll();
 
@@ -1167,7 +1237,12 @@ export function renderGraph(
       if (holdFrame !== null) cancelAnimationFrame(holdFrame);
       holdFrame = null;
       cancelPaintFrame();
+      clearHoverTimer();
       hoveredId = null;
+      hoverFromKeyboard = false;
+      pointerDown = false;
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
       selectedId = null;
       pendingReheat.clear();
       simulation.stop();
@@ -1178,9 +1253,10 @@ export function renderGraph(
         .on('keydown', null)
         .on('mouseenter', null)
         .on('mouseleave', null)
+        .on('mousedown', null)
         .on('focus', null)
         .on('blur', null);
-      svg.on('.zoom', null).on('click', null);
+      svg.on('.zoom', null).on('click', null).on('pointerdown', null);
       // Stops a running focusOn transition before the SVG is cleared.
       svg.interrupt();
       svg.selectAll('*').remove();
