@@ -18,6 +18,7 @@ import { sameVisibleSet } from '../data/filterGraph';
 import type { VisibleSet } from '../data/filterGraph';
 import styles from './graph.module.css';
 import { modelColor } from './modelColor';
+import { relativeRadius } from './prepareSimulation';
 import type { prepareSimulation, SimLink, SimNode } from './prepareSimulation';
 
 export type LabelMode = 'smart' | 'all' | 'focus';
@@ -113,6 +114,11 @@ const ARROW_SIZE = 4.5;
 const ARROW_SIZE_HI = 6;
 const ARROW_OVERSHOOT = ((10 - ARROW_REF_X) * ARROW_SIZE_HI) / 10;
 const LABEL_MAX = 30;
+// Label geometry for the fit: x offset from the node edge, width per code point
+// at the 11 px font, minimum half-height.
+const LABEL_GAP = 5;
+const LABEL_CHAR_W = 6.2;
+const LABEL_HALF_H = 8;
 const PILL_PAD_X = 6;
 const PILL_PAD_Y = 3;
 const PILL_RADIUS = 4;
@@ -140,6 +146,11 @@ function labelText(title: string): string {
   return chars.length > LABEL_MAX ? `${chars.slice(0, LABEL_MAX - 1).join('')}…` : title;
 }
 
+/** Estimated width of the rendered label (same truncation as `labelText`, `…` counted). */
+function labelWidth(title: string): number {
+  return Math.min(Array.from(labelText(title)).length, LABEL_MAX) * LABEL_CHAR_W;
+}
+
 let markerSeq = 0;
 
 export function renderGraph(
@@ -164,6 +175,7 @@ export function renderGraph(
     });
   }
   const allNodes: SimNode[] = [...nodeById.values()];
+  const labelW = new Map<string, number>(allNodes.map((n) => [n.id, labelWidth(n.title)]));
   // Link ends are node ids here; forceLink swaps them for the node objects
   // above, which are stable for the life of the mount, so a link that leaves
   // and comes back keeps pointing at the same objects.
@@ -229,6 +241,8 @@ export function renderGraph(
   let scale = 1;
   // Focus + neighbours from the last paint(); read by the labels-only pass.
   let focusSet = new Set<string>();
+  // Nodes with the `show` class from the last paintLabels(); read by the fit.
+  let shownIds = new Set<string>();
   // Last smart threshold on zoom, so a zoom only repaints labels when crossing it.
   let wasSmartScale = false;
   let destroyed = false;
@@ -238,6 +252,14 @@ export function renderGraph(
     edgeIndexes: allLinks.map((l) => l.edge),
   };
   setVisible(lastApplied);
+  applyRadii();
+
+  // Radii relative to the most-connected visible node; the DOM follows in join().
+  function applyRadii() {
+    let maxDegree = 0;
+    for (const n of visibleNodes) maxDegree = Math.max(maxDegree, n.degree);
+    for (const n of visibleNodes) n.r = relativeRadius(n.degree, maxDegree);
+  }
 
   function setVisible(visible: VisibleSet) {
     const isVisible = (id: string) => visible.coreIds.has(id) || visible.contextIds.has(id);
@@ -322,7 +344,7 @@ export function renderGraph(
       .attr('r', (d) => d.r);
     g.append('text')
       .attr('class', styles.label)
-      .attr('x', (d) => d.r + 5)
+      .attr('x', (d) => d.r + LABEL_GAP)
       .attr('y', 4)
       .text((d) => labelText(d.title));
     g.call(dragBehavior);
@@ -369,6 +391,11 @@ export function renderGraph(
       .data(nodesToShow, (d) => d.id)
       .join(enterNodes, (u) => u, (x) => x.remove());
     nodeSel.classed(styles.ctx, (d) => contextIds.has(d.id));
+    // Radii change on every update (relative to the visible set).
+    nodeSel.select(`.${styles.halo}`).attr('r', (d) => d.r + 7);
+    nodeSel.select(`.${styles.ring}`).attr('r', (d) => d.r + 3.5);
+    nodeSel.select(`.${styles.dot}`).attr('r', (d) => d.r);
+    nodeSel.select(`.${styles.label}`).attr('x', (d) => d.r + LABEL_GAP);
   }
 
   // Focus = hovered node, else selected node (POC `paint()`). Neighbours are
@@ -434,13 +461,34 @@ export function renderGraph(
     const isSmart = labelMode === 'smart';
     wasSmartScale = scale >= SMART_MIN_SCALE;
     const isSmartAll = isSmart && (wasSmartScale || visibleNodes.length <= SMART_MAX_NODES);
-    nodeSel.classed(
-      styles.show,
-      (d) =>
+    const shown = new Set<string>();
+    nodeSel.classed(styles.show, (d) => {
+      const on =
         focusSet.has(d.id) ||
         matchIds.has(d.id) ||
-        (isSmart && (isSmartAll || d.degree >= SMART_MIN_DEGREE)),
-    );
+        (isSmart && (isSmartAll || d.degree >= SMART_MIN_DEGREE));
+      if (on) shown.add(d.id);
+      return on;
+    });
+    shownIds = shown;
+  }
+
+  // "All" shows every label through a root class, regardless of `show`.
+  function labelShown(id: string): boolean {
+    return labelMode === 'all' || shownIds.has(id);
+  }
+
+  // Extents of a node including its label when `withLabel`: the label sits to the right.
+  function nodeBox(n: SimNode, withLabel: boolean) {
+    const x = n.x ?? 0;
+    const y = n.y ?? 0;
+    const half = withLabel ? Math.max(n.r, LABEL_HALF_H) : n.r;
+    return {
+      x0: x - n.r,
+      x1: withLabel ? x + n.r + LABEL_GAP + (labelW.get(n.id) ?? 0) : x + n.r,
+      y0: y - half,
+      y1: y + half,
+    };
   }
 
   function draw() {
@@ -498,12 +546,11 @@ export function renderGraph(
     let x1 = -Infinity;
     let y1 = -Infinity;
     for (const n of visibleNodes) {
-      const x = n.x ?? 0;
-      const y = n.y ?? 0;
-      x0 = Math.min(x0, x - n.r);
-      x1 = Math.max(x1, x + n.r);
-      y0 = Math.min(y0, y - n.r);
-      y1 = Math.max(y1, y + n.r);
+      const b = nodeBox(n, labelShown(n.id));
+      x0 = Math.min(x0, b.x0);
+      x1 = Math.max(x1, b.x1);
+      y0 = Math.min(y0, b.y0);
+      y1 = Math.max(y1, b.y1);
     }
     const bw = Math.max(1, x1 - x0);
     const bh = Math.max(1, y1 - y0);
@@ -667,8 +714,11 @@ export function renderGraph(
 
       // Order matters: nodes first (re-indexes them, keeps x/y/vx/vy), then
       // links (forceLink resolves ends against the current nodes).
+      applyRadii();
       simulation.nodes(visibleNodes);
       linkForce.links(visibleLinks);
+      // Re-reads the new radii in the charge and collide accessors.
+      applyForces();
       join(visibleNodes, visibleLinks, visible.contextIds);
       // A removed node never fires mouseleave.
       if (hoveredId !== null && !visibleIds.has(hoveredId)) hoveredId = null;
@@ -705,9 +755,11 @@ export function renderGraph(
       const nx = n.x ?? 0;
       const ny = n.y ?? 0;
       // Neighbours = the other end of a visible link (same rule as paint()).
-      let maxDx = 0;
-      let maxDy = 0;
-      let maxR = n.r;
+      // Half-extents around the centred node, labels included: the focus and
+      // its neighbours always get a label once selected (focusSet).
+      const self = nodeBox(n, true);
+      let halfW = Math.max(nx - self.x0, self.x1 - nx);
+      let halfH = Math.max(ny - self.y0, self.y1 - ny);
       let hasNeighbour = false;
       for (const l of visibleLinks) {
         const s = endId(l.source);
@@ -717,15 +769,15 @@ export function renderGraph(
         const o = nodeById.get(other);
         if (!o) continue;
         hasNeighbour = true;
-        maxDx = Math.max(maxDx, Math.abs((o.x ?? 0) - nx));
-        maxDy = Math.max(maxDy, Math.abs((o.y ?? 0) - ny));
-        maxR = Math.max(maxR, o.r);
+        const b = nodeBox(o, true);
+        halfW = Math.max(halfW, nx - b.x0, b.x1 - nx);
+        halfH = Math.max(halfH, ny - b.y0, b.y1 - ny);
       }
       let k: number;
       if (hasNeighbour) {
         const availW = Math.max(1, w - 2 * FOCUS_PADDING);
         const availH = Math.max(1, h - 2 * FOCUS_PADDING);
-        const fitK = Math.min(availW / (2 * maxDx + 2 * maxR), availH / (2 * maxDy + 2 * maxR));
+        const fitK = Math.min(availW / (2 * halfW), availH / (2 * halfH));
         k = Math.max(FOCUS_SCALE_MIN, Math.min(FOCUS_SCALE_MAX, fitK));
       } else {
         k = Math.max(zoomTransform(svgEl).k, FOCUS_MIN_SCALE);

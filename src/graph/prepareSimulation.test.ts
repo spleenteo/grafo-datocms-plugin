@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Graph } from '../data/types';
-import { prepareSimulation } from './prepareSimulation';
+import { prepareSimulation, relativeRadius } from './prepareSimulation';
 
 const model = (apiKey: string, count: number) => ({
   itemTypeId: apiKey,
@@ -79,13 +79,13 @@ describe('prepareSimulation', () => {
     expect(nodes[0].degree).toBe(2);
   });
 
-  it('caps the radius at 20', () => {
+  it('sizes radii relative to the most-connected node', () => {
     const nodes = Array.from({ length: 101 }, (_, i) => node(String(i)));
     const edges = Array.from({ length: 100 }, (_, i) => ({ source: 0, target: i + 1, field: 0 }));
     const res = prepareSimulation(graph({ nodes, edges }));
     expect(res.nodes[0].degree).toBe(100);
     expect(res.nodes[0].r).toBe(20);
-    expect(res.nodes[1].r).toBeCloseTo(5 + 1.6);
+    expect(res.nodes[1].r).toBeCloseTo(4 + 16 * 0.1);
   });
 
   it('orders colours by count desc then apiKey, including empty models', () => {
@@ -97,5 +97,23 @@ describe('prepareSimulation', () => {
       }),
     );
     expect(colorIndex).toEqual([2, 1, 0, 3]);
+  });
+});
+
+describe('relativeRadius', () => {
+  it('is 4 with no relations', () => {
+    expect(relativeRadius(0, 10)).toBe(4);
+  });
+
+  it('is 20 at the max degree', () => {
+    expect(relativeRadius(10, 10)).toBe(20);
+  });
+
+  it('is 12 at a quarter of the max degree', () => {
+    expect(relativeRadius(5, 20)).toBe(12);
+  });
+
+  it('is 4 when the max degree is 0', () => {
+    expect(relativeRadius(0, 0)).toBe(4);
   });
 });

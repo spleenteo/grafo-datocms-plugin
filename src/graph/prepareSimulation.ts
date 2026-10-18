@@ -17,8 +17,10 @@ export interface SimLink extends SimulationLinkDatum<SimNode> {
   edge: number;
 }
 
-export function nodeRadius(degree: number): number {
-  return Math.min(20, 5 + Math.sqrt(degree) * 1.6);
+/** Radius relative to the most-connected node of the set: 4 (no relations) to 20 (the max). */
+export function relativeRadius(degree: number, maxDegree: number): number {
+  if (maxDegree <= 0) return 4;
+  return 4 + 16 * Math.sqrt(degree / maxDegree);
 }
 
 export function prepareSimulation(graph: Graph): {
@@ -40,6 +42,8 @@ export function prepareSimulation(graph: Graph): {
     });
   });
 
+  // Relative to the whole graph; the renderer recomputes it for the visible set.
+  const maxDegree = degrees.reduce((m, d) => Math.max(m, d), 0);
   const nodes: SimNode[] = graph.nodes.map((n, i) => ({
     id: n.id,
     title: n.title,
@@ -47,7 +51,7 @@ export function prepareSimulation(graph: Graph): {
     model: n.model,
     status: n.status,
     degree: degrees[i],
-    r: nodeRadius(degrees[i]),
+    r: relativeRadius(degrees[i], maxDegree),
   }));
 
   const order = graph.models
