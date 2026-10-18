@@ -66,7 +66,7 @@ interface Props {
   onFit: () => void;
   onRelayout: () => void;
   stats: string;
-  onReload?: () => void;
+  onReload: () => void;
   isReloadDisabled: boolean;
 }
 
@@ -137,7 +137,7 @@ export default function CanvasControls(props: Props) {
       <div className={styles.bottomBar}>
         <p className={`${styles.stats} ${styles.auto}`}>
           <span>{props.stats}</span>
-          <Button buttonSize="xxs" onClick={onReload} disabled={isReloadDisabled || !onReload}>
+          <Button buttonSize="xxs" onClick={onReload} disabled={isReloadDisabled}>
             Reload
           </Button>
         </p>

@@ -1,4 +1,5 @@
 import type { RawItem, Schema, SchemaItemType } from './types';
+import { isRecord } from './types';
 
 export type ExtractedLink = { fieldApiKey: string; targetId: string };
 
@@ -16,14 +17,10 @@ type Collector = {
 const STRUCTURED_LINK_TYPES = new Set(['itemLink', 'inlineItem']);
 const STRUCTURED_BLOCK_TYPES = new Set(['block', 'inlineBlock']);
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
 type ResolvedBlock = { id: string; itemTypeId: string; values: Record<string, unknown> };
 
 function idOf(value: unknown): string | null {
-  if (isObject(value) && typeof value.id === 'string') return value.id;
+  if (isRecord(value) && typeof value.id === 'string') return value.id;
   return null;
 }
 
@@ -33,7 +30,7 @@ function idOf(value: unknown): string | null {
  */
 function inlineItemTypeId(block: Record<string, unknown>): string | null {
   const relationships = block.relationships;
-  if (isObject(relationships) && isObject(relationships.item_type)) {
+  if (isRecord(relationships) && isRecord(relationships.item_type)) {
     const id = idOf(relationships.item_type.data);
     if (id !== null) return id;
   }
@@ -49,10 +46,10 @@ function resolveBlock(ref: unknown, lookup: ExtractLookup): ResolvedBlock | null
     const values: Record<string, unknown> = block;
     return { id: ref, itemTypeId: block.item_type.id, values };
   }
-  if (!isObject(ref) || typeof ref.id !== 'string') return null;
+  if (!isRecord(ref) || typeof ref.id !== 'string') return null;
   const itemTypeId = inlineItemTypeId(ref);
   if (itemTypeId === null) return null;
-  const values = isObject(ref.attributes) ? ref.attributes : ref;
+  const values = isRecord(ref.attributes) ? ref.attributes : ref;
   return { id: ref.id, itemTypeId, values };
 }
 
@@ -66,7 +63,7 @@ function visitBlock(ref: unknown, c: Collector): void {
 }
 
 function walkDast(node: unknown, c: Collector): void {
-  if (!isObject(node)) return;
+  if (!isRecord(node)) return;
   const type = node.type;
   if (typeof type === 'string') {
     if (STRUCTURED_LINK_TYPES.has(type)) {
@@ -99,7 +96,7 @@ function collectValue(fieldType: string, value: unknown, c: Collector): void {
       visitBlock(value, c);
       break;
     case 'structured_text':
-      if (isObject(value)) walkDast(value.document, c);
+      if (isRecord(value)) walkDast(value.document, c);
       break;
   }
 }
@@ -113,7 +110,7 @@ function collectFields(
     const value = values[field.apiKey];
     if (value === null || value === undefined) continue;
     if (field.isLocalized) {
-      if (!isObject(value)) continue;
+      if (!isRecord(value)) continue;
       for (const localeValue of Object.values(value)) {
         collectValue(field.fieldType, localeValue, c);
       }

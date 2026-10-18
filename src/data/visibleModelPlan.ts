@@ -1,10 +1,5 @@
 import { readAccess } from './readAccess';
-import type { Schema } from './types';
-
-type Permissions = {
-  positive_item_type_permissions: unknown[];
-  negative_item_type_permissions: unknown[];
-};
+import type { Permissions, Schema } from './types';
 
 export type VisibleModelPlan = {
   /** Ids of the (non-block) models to list: readable by the role and not excluded. */

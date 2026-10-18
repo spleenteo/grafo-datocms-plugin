@@ -2,6 +2,7 @@ import type { RenderConfigScreenCtx } from 'datocms-plugin-sdk';
 import { Button, Canvas, FieldGroup, Form, SelectField } from 'datocms-react-ui';
 import { useMemo, useState } from 'react';
 import { readPluginSettings } from '../data/pluginSettings';
+import { errorMessage } from '../utils/errorMessage';
 import styles from './ConfigScreen.module.css';
 
 type Option = { label: string; value: string };
@@ -12,8 +13,8 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
   const allOptions = useMemo<Option[]>(
     () =>
       Object.values(ctx.itemTypes)
-        .filter((m) => m !== undefined && !m.attributes.modular_block)
-        .map((m) => ({ label: m!.attributes.name, value: m!.attributes.api_key }))
+        .filter((m): m is NonNullable<typeof m> => m !== undefined && !m.attributes.modular_block)
+        .map((m) => ({ label: m.attributes.name, value: m.attributes.api_key }))
         .sort((a, b) => a.label.localeCompare(b.label)),
     [ctx.itemTypes],
   );
@@ -44,8 +45,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
       });
       await ctx.notice('Settings saved.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await ctx.alert(`Settings could not be saved: ${message}`);
+      await ctx.alert(`Settings could not be saved: ${errorMessage(error)}`);
     } finally {
       setSaving(false);
     }

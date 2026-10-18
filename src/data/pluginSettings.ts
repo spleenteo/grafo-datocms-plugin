@@ -1,3 +1,5 @@
+import { isRecord } from './types';
+
 export const DEFAULT_EXCLUDED_MODEL_API_KEYS = ['schema_migration'];
 
 export type PluginSettings = {
@@ -12,10 +14,7 @@ function strings(value: unknown): string[] | undefined {
 
 /** Defensive read of the plugin parameters; an absent excluded list falls back to the default. */
 export function readPluginSettings(parameters: unknown): PluginSettings {
-  const p =
-    typeof parameters === 'object' && parameters !== null
-      ? (parameters as Record<string, unknown>)
-      : {};
+  const p = isRecord(parameters) ? parameters : {};
   return {
     startingModelApiKeys: strings(p.startingModelApiKeys) ?? [],
     excludedModelApiKeys: strings(p.excludedModelApiKeys) ?? [...DEFAULT_EXCLUDED_MODEL_API_KEYS],

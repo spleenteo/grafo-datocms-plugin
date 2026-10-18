@@ -1,8 +1,11 @@
 import { Button, ButtonGroup, ButtonGroupButton, SwitchField } from 'datocms-react-ui';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
+import { fieldLabel } from '../data/buildGraph';
 import { allFilters, type Filters } from '../data/filterGraph';
 import type { Graph, NodeStatus } from '../data/types';
+import { NODE_STATUSES } from '../data/types';
 import { modelColor } from '../graph/modelColor';
+import { STATUS_LABEL } from './labels';
 import styles from './FilterRail.module.css';
 
 interface Props {
@@ -13,12 +16,6 @@ interface Props {
   resetFilters: () => Filters;
   onHelp: () => void;
 }
-
-const STATUSES: { status: NodeStatus; label: string }[] = [
-  { status: 'published', label: 'Published' },
-  { status: 'updated', label: 'Updated' },
-  { status: 'draft', label: 'Draft' },
-];
 
 const DIRECTIONS: { direction: Filters['direction']; label: string }[] = [
   { direction: 'both', label: 'Both' },
@@ -56,10 +53,12 @@ function GroupHeader({
   );
 }
 
-export default function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp }: Props) {
+function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp }: Props) {
   const set = (patch: Partial<Filters>) => onChange((prev) => ({ ...prev, ...patch }));
-  const toggle = (key: 'models' | 'statuses' | 'fields', value: number | NodeStatus) =>
-    onChange((prev) => ({ ...prev, [key]: toggled(prev[key] as ReadonlySet<number | NodeStatus>, value) }));
+  const toggleIndex = (key: 'models' | 'fields', value: number) =>
+    onChange((prev) => ({ ...prev, [key]: toggled(prev[key], value) }));
+  const toggleStatus = (value: NodeStatus) =>
+    onChange((prev) => ({ ...prev, statuses: toggled(prev.statuses, value) }));
 
   const modelOrder = useMemo(
     () => graph.models.map((_, i) => i).sort((a, b) => colorIndex[a] - colorIndex[b]),
@@ -97,12 +96,12 @@ export default function FilterRail({ graph, colorIndex, filters, onChange, reset
                 role="button"
                 tabIndex={0}
                 aria-pressed={isOn}
-                onClick={() => toggle('models', m)}
+                onClick={() => toggleIndex('models', m)}
                 onDoubleClick={() => set({ models: new Set([m]) })}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    toggle('models', m);
+                    toggleIndex('models', m);
                   }
                 }}
               >
@@ -122,16 +121,16 @@ export default function FilterRail({ graph, colorIndex, filters, onChange, reset
           onNone={() => set({ statuses: new Set() })}
         />
         <div className={styles.chips}>
-          {STATUSES.map(({ status, label }) => (
+          {NODE_STATUSES.map((status) => (
             <button
               key={status}
               type="button"
               className={`${styles.chip} ${filters.statuses.has(status) ? styles.on : styles.chipOff}`}
               title={`${statusCounts[status]} records`}
               aria-pressed={filters.statuses.has(status)}
-              onClick={() => toggle('statuses', status)}
+              onClick={() => toggleStatus(status)}
             >
-              {label}
+              {STATUS_LABEL[status]}
             </button>
           ))}
         </div>
@@ -154,9 +153,9 @@ export default function FilterRail({ graph, colorIndex, filters, onChange, reset
                 className={`${styles.chip} ${isOn ? styles.on : styles.chipOff}`}
                 title={`${count} relations`}
                 aria-pressed={isOn}
-                onClick={() => toggle('fields', index)}
+                onClick={() => toggleIndex('fields', index)}
               >
-                {field.isPseudo ? 'parent (tree)' : field.apiKey}
+                {fieldLabel(field)}
               </button>
             );
           })}
@@ -209,3 +208,5 @@ export default function FilterRail({ graph, colorIndex, filters, onChange, reset
     </aside>
   );
 }
+
+export default memo(FilterRail);

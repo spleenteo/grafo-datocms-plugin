@@ -1,8 +1,8 @@
 import type { Filters } from './filterGraph';
 import { allFilters } from './filterGraph';
 import type { Graph, NodeStatus } from './types';
+import { fieldKey, isRecord, NODE_STATUSES } from './types';
 
-const STATUSES: readonly NodeStatus[] = ['published', 'updated', 'draft'];
 const DIRECTIONS: readonly Filters['direction'][] = ['both', 'out', 'in'];
 
 export type StoredFilters = {
@@ -34,7 +34,7 @@ export function serializeFilters(
     offFields: graph.fields
       .filter((_, i) => !filters.fields.has(i))
       .map((f): [string, boolean] => [f.apiKey, f.isPseudo]),
-    statuses: STATUSES.filter((s) => filters.statuses.has(s)),
+    statuses: NODE_STATUSES.filter((s) => filters.statuses.has(s)),
     showsOutside: filters.showsOutside,
     direction: filters.direction,
     hidesOrphans: filters.hidesOrphans,
@@ -51,8 +51,8 @@ export function deserializeFilters(
   data: unknown,
   startingKey: string,
 ): Filters | null {
-  if (typeof data !== 'object' || data === null) return null;
-  const d = data as Record<string, unknown>;
+  if (!isRecord(data)) return null;
+  const d = data;
   if (d.v !== 1 || d.startingKey !== startingKey) return null;
   if (!isStringArray(d.offModels) || !isStringArray(d.statuses)) return null;
   if (
@@ -66,10 +66,10 @@ export function deserializeFilters(
   if (typeof d.showsOutside !== 'boolean' || typeof d.hidesOrphans !== 'boolean') return null;
   const direction = DIRECTIONS.find((x) => x === d.direction);
   if (direction === undefined) return null;
-  if (!d.statuses.every((s) => (STATUSES as readonly string[]).includes(s))) return null;
+  if (!d.statuses.every((s) => (NODE_STATUSES as readonly string[]).includes(s))) return null;
 
   const offModels = new Set(d.offModels);
-  const offFields = new Set((d.offFields as [string, boolean][]).map(([k, p]) => `${p ? 1 : 0}:${k}`));
+  const offFields = new Set((d.offFields as [string, boolean][]).map(([k, p]) => fieldKey({ apiKey: k, isPseudo: p })));
   const base = allFilters(graph);
   const models = new Set<number>();
   graph.models.forEach((m, i) => {
@@ -78,7 +78,7 @@ export function deserializeFilters(
   if (models.size === 0) return null;
   const fields = new Set<number>();
   graph.fields.forEach((f, i) => {
-    if (!offFields.has(`${f.isPseudo ? 1 : 0}:${f.apiKey}`)) fields.add(i);
+    if (!offFields.has(fieldKey(f))) fields.add(i);
   });
   return {
     ...base,

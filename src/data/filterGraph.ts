@@ -1,4 +1,5 @@
 import type { Graph, NodeStatus } from './types';
+import { NODE_STATUSES } from './types';
 
 export type Filters = {
   models: ReadonlySet<number>;
@@ -19,7 +20,7 @@ export type VisibleSet = {
 export function allFilters(graph: Graph): Filters {
   return {
     models: new Set(graph.models.map((_, i) => i)),
-    statuses: new Set<NodeStatus>(['published', 'updated', 'draft']),
+    statuses: new Set<NodeStatus>(NODE_STATUSES),
     fields: new Set(graph.fields.map((_, i) => i)),
     showsOutside: true,
     direction: 'both',
@@ -74,7 +75,7 @@ export function filterGraph(graph: Graph, filters: Filters): VisibleSet {
   return { coreIds, contextIds, edgeIndexes };
 }
 
-function sameSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+export function sameSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
   if (a.size !== b.size) return false;
   for (const v of a) if (!b.has(v)) return false;
   return true;

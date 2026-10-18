@@ -21,12 +21,10 @@
 }
 
 .header {
+  composes: sectionHeading from './shared.module.css';
   display: flex;
   align-items: center;
   justify-content: space-between;
-  text-transform: uppercase;
-  font-size: var(--font-size-xs);
-  color: var(--color--ink-subtle);
 }
 
 .headerActions {
@@ -51,22 +49,15 @@
   font-size: var(--font-size-s);
 }
 
-.model.on {
-  background: var(--color--selected--surface);
-  color: var(--color--selected--ink);
-  border: 1px solid var(--color--selected--border);
-}
-
 .model.off {
   color: var(--color--ink-subtle);
   border: 1px solid transparent;
 }
 
 .dot {
-  flex: none;
+  composes: colorDot from './shared.module.css';
   width: 10px;
   height: 10px;
-  border-radius: 50%;
 }
 
 .model.off .dot {
@@ -101,7 +92,7 @@
   user-select: none;
 }
 
-.chip.on {
+.on {
   background: var(--color--selected--surface);
   color: var(--color--selected--ink);
   border: 1px solid var(--color--selected--border);

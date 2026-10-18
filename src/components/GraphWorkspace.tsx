@@ -241,6 +241,13 @@ export default function GraphWorkspace({
   useEffect(() => {
     if (!isRefreshing) reloadStartedRef.current = false;
   }, [isRefreshing]);
+  const resetFilters = useCallback(
+    () => startingFilters(graph, startingKeysRef.current),
+    [graph],
+  );
+  const openHelp = useCallback(() => {
+    void ctxRef.current.openModal({ id: 'help', title: 'Grafo help', width: 'm', initialHeight: 480 });
+  }, []);
   const reload = useCallback(() => {
     if (reloadStartedRef.current) return;
     reloadStartedRef.current = true;
@@ -278,10 +285,8 @@ export default function GraphWorkspace({
         colorIndex={data.colorIndex}
         filters={filters}
         onChange={changeFilters}
-        resetFilters={() => startingFilters(graph, startingKeysRef.current)}
-        onHelp={() =>
-          void ctxRef.current.openModal({ id: 'help', title: 'Grafo help', width: 'm', initialHeight: 480 })
-        }
+        resetFilters={resetFilters}
+        onHelp={openHelp}
       />
       <div ref={stageRef} className={styles.stage}>
         {canvasSide !== null && (

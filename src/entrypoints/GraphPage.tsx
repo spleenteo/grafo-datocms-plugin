@@ -6,6 +6,7 @@ import GraphWorkspace from '../components/GraphWorkspace';
 import { loadGraph, loadGraphKey } from '../data/loadGraph';
 import { readPluginSettings } from '../data/pluginSettings';
 import type { Graph } from '../data/types';
+import { errorMessage } from '../utils/errorMessage';
 import styles from './GraphPage.module.css';
 
 type State =
@@ -21,31 +22,25 @@ type State =
       refreshError: string | null;
     };
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   const apiToken = ctx.currentUserAccessToken;
   const { environment, cmaBaseUrl: baseUrl } = ctx;
   const permissions = ctx.currentRole.meta.final_permissions;
-  const settings = readPluginSettings(ctx.plugin.attributes.parameters);
+  const userId = ctx.currentUser.id;
+  const parameters = ctx.plugin.attributes.parameters;
+  const settings = useMemo(() => readPluginSettings(parameters), [parameters]);
   const excludedModelApiKeys = settings.excludedModelApiKeys;
-  const excludedKey = JSON.stringify(excludedModelApiKeys);
   const [state, setState] = useState<State>({ status: 'loading' });
 
   // A new ctx brings a new permissions object with the same content: the effect
-  // depends on its string key, and reads the object through a ref.
-  const loadKey = useMemo(
-    () => loadGraphKey(environment, baseUrl, permissions, JSON.parse(excludedKey) as string[]),
-    [environment, baseUrl, permissions, excludedKey],
-  );
+  // depends on this string key, and reads the object through a ref.
+  const loadKey = loadGraphKey(environment, baseUrl, userId, permissions, excludedModelApiKeys);
   const permissionsRef = useRef(permissions);
-  const optionsRef = useRef({ apiToken, environment, baseUrl, excludedModelApiKeys });
+  const optionsRef = useRef({ apiToken, environment, baseUrl, userId, excludedModelApiKeys });
   useEffect(() => {
     permissionsRef.current = permissions;
-    optionsRef.current = { apiToken, environment, baseUrl, excludedModelApiKeys };
-  }, [permissions, apiToken, environment, baseUrl, excludedModelApiKeys]);
+    optionsRef.current = { apiToken, environment, baseUrl, userId, excludedModelApiKeys };
+  }, [permissions, apiToken, environment, baseUrl, userId, excludedModelApiKeys]);
 
   // Bumped by every load and refresh: a result applies only if no load started since.
   const generationRef = useRef(0);
@@ -60,6 +55,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
       apiToken,
       environment,
       baseUrl,
+      userId,
       permissions: permissionsRef.current,
       excludedModelApiKeys: optionsRef.current.excludedModelApiKeys,
     })
@@ -82,17 +78,18 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
       // Invalidates this load (and any refresh started from it).
       generationRef.current += 1;
     };
-  }, [apiToken, environment, baseUrl, loadKey]);
+  }, [apiToken, loadKey]);
 
   const reload = useCallback(() => {
     const {
       apiToken: token,
       environment: env,
       baseUrl: url,
+      userId: user,
       excludedModelApiKeys: excluded,
     } = optionsRef.current;
     if (!token) return;
-    const key = loadGraphKey(env, url, permissionsRef.current, excluded);
+    const key = loadGraphKey(env, url, user, permissionsRef.current, excluded);
     generationRef.current += 1;
     const generation = generationRef.current;
     const isCurrent = () => generationRef.current === generation;
@@ -101,6 +98,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
       apiToken: token,
       environment: env,
       baseUrl: url,
+      userId: user,
       permissions: permissionsRef.current,
       excludedModelApiKeys: excluded,
       fresh: true,

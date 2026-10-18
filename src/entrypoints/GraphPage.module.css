@@ -11,11 +11,6 @@
   font-size: var(--font-size-xl);
 }
 
-.hint {
-  margin: 0;
-  color: var(--color--ink-subtle);
-}
-
 .error {
   margin: 0;
   color: var(--alert-color, var(--color--ink));

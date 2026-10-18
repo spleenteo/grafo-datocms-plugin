@@ -1,15 +1,17 @@
 import { Button } from 'datocms-react-ui';
 import { useEffect, useMemo, useState } from 'react';
 import { relationsOf, type Relation } from '../data/relationsOf';
+import { fieldLabel } from '../data/buildGraph';
 import type { Graph, GraphNode, NodeStatus } from '../data/types';
 import { modelColor } from '../graph/modelColor';
+import { STATUS_LABEL } from './labels';
 import styles from './Inspector.module.css';
 
 interface Props {
   graph: Graph;
   nodeIndex: number | null;
   /** Core and context ids currently drawn. */
-  visibleIds: Set<string>;
+  visibleIds: ReadonlySet<string>;
   colorIndex: number[];
   onSelectNode: (id: string) => void;
   onOpenNode: (index: number) => void;
@@ -17,12 +19,6 @@ interface Props {
   locale: string;
   resolveCreatorName: (creator: NonNullable<GraphNode['creator']>) => Promise<string | null>;
 }
-
-const STATUS_LABEL: Record<NodeStatus, string> = {
-  published: 'Published',
-  updated: 'Updated',
-  draft: 'Draft',
-};
 
 const STATUS_COLOR: Record<NodeStatus, string> = {
   published: 'var(--color--ink-success)',
@@ -55,7 +51,6 @@ export default function Inspector({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creatorKey, resolveCreatorName]);
   const formatter = useMemo(() => {
     try {
@@ -105,7 +100,7 @@ export default function Inspector({
             style={{ background: modelColor(colorIndex[other.model]) }}
           />
           <span className={styles.rowTitle}>{other.title}</span>
-          <span className={styles.field}>{field.isPseudo ? 'parent (tree)' : field.apiKey}</span>
+          <span className={styles.field}>{fieldLabel(field)}</span>
         </button>
       );
     });

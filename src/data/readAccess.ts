@@ -1,6 +1,8 @@
 // Which models the current role can read. Conservative: anything unexpected
 // means "not full read", so the loader falls back to the nested, per-model path.
 
+import type { Permissions } from './types';
+
 type Entry = {
   action: string;
   environment: string;
@@ -26,11 +28,6 @@ const KNOWN_KEYS = new Set([
 export type ReadAccess = {
   readableModelIds: Set<string>;
   isFullRead: boolean;
-};
-
-type Permissions = {
-  positive_item_type_permissions: unknown[];
-  negative_item_type_permissions: unknown[];
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> =>

@@ -1,20 +1,18 @@
 import { buildClient } from '@datocms/cma-client-browser';
 import { buildGraph } from './buildGraph';
 import { parseSchema } from './parseSchema';
-import type { Graph, RawItem, RawRecord } from './types';
+import type { Graph, Permissions, RawItem, RawRecord } from './types';
 import { visibleModelPlan } from './visibleModelPlan';
 
-/** The two arrays of `ctx.currentRole.meta.final_permissions` that decide read access. */
-export type RolePermissions = {
-  positive_item_type_permissions: unknown[];
-  negative_item_type_permissions: unknown[];
-};
+export type RolePermissions = Permissions;
 
 export type LoadGraphOptions = {
   apiToken: string;
   environment: string;
   baseUrl?: string;
   permissions: RolePermissions;
+  /** Current user: with `on_creator` rules the readable records depend on who asks. */
+  userId: string;
   /** Models never loaded nor shown (applied after the role's read access is computed). */
   excludedModelApiKeys: readonly string[];
   /** Bypasses the memo; a success replaces the entry, a failure leaves it alone. */
@@ -32,7 +30,7 @@ const CONCURRENCY = 3;
 const memo = new Map<string, Promise<LoadGraphResult>>();
 // Latest fresh load per key: only that one may write its result to the memo.
 const freshTokens = new Map<string, number>();
-let lastFreshToken = 0;
+let freshSeq = 0;
 
 /**
  * Cache key of one load: same environment, endpoint and effective permissions.
@@ -41,10 +39,11 @@ let lastFreshToken = 0;
 export function loadGraphKey(
   environment: string,
   baseUrl: string | undefined,
+  userId: string,
   permissions: RolePermissions,
   excludedModelApiKeys: readonly string[],
 ): string {
-  return `${environment}\n${baseUrl ?? ''}\n${JSON.stringify({
+  return `${environment}\n${baseUrl ?? ''}\n${userId}\n${JSON.stringify({
     positive: permissions.positive_item_type_permissions,
     negative: permissions.negative_item_type_permissions,
     excluded: [...excludedModelApiKeys].sort(),
@@ -125,12 +124,13 @@ export function loadGraph(options: LoadGraphOptions): Promise<LoadGraphResult> {
   const key = loadGraphKey(
     options.environment,
     options.baseUrl,
+    options.userId,
     options.permissions,
     options.excludedModelApiKeys,
   );
   if (options.fresh) {
-    lastFreshToken += 1;
-    const token = lastFreshToken;
+    freshSeq += 1;
+    const token = freshSeq;
     freshTokens.set(key, token);
     const promise = loadGraphUncached(options);
     promise.then(

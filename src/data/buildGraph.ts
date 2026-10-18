@@ -11,28 +11,28 @@ import type {
   Schema,
   SchemaItemType,
 } from './types';
+import { fieldKey, isRecord } from './types';
 
 export const PARENT_FIELD_KEY = 'parent';
 
+/** Display name of a field; the tree pseudo-field has no api key worth showing. */
+export const fieldLabel = (field: GraphField): string =>
+  field.isPseudo ? 'parent (tree)' : field.apiKey;
+
 function firstNonEmpty(value: unknown, locales: string[]): string {
   if (typeof value === 'string') return value.trim();
-  if (typeof value === 'object' && value !== null) {
-    const byLocale = value as Record<string, unknown>;
+  if (isRecord(value)) {
     for (const locale of locales) {
-      const v = byLocale[locale];
+      const v = value[locale];
       if (typeof v === 'string' && v.trim() !== '') return v.trim();
     }
   }
   return '';
 }
 
-function fieldValues(item: RawRecord): Record<string, unknown> {
-  return item;
-}
-
 function titleOf(item: RawRecord, itemType: SchemaItemType, locales: string[]): string {
   if (itemType.titleFieldApiKey) {
-    const raw = fieldValues(item)[itemType.titleFieldApiKey];
+    const raw = (item as Record<string, unknown>)[itemType.titleFieldApiKey];
     const title = firstNonEmpty(raw, locales);
     if (title) return title;
   }
@@ -93,7 +93,7 @@ export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]
   const fields: GraphField[] = [];
   const fieldIndex = new Map<string, number>();
   const fieldFor = (apiKey: string, isPseudo: boolean): number => {
-    const key = `${isPseudo ? 'p' : 'r'}:${apiKey}`;
+    const key = fieldKey({ apiKey, isPseudo });
     let idx = fieldIndex.get(key);
     if (idx === undefined) {
       idx = fields.length;
@@ -106,14 +106,14 @@ export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]
   const edges: GraphEdge[] = [];
   const seen = new Set<string>();
   const addEdge = (source: number, target: number, apiKey: string, isPseudo: boolean) => {
-    const key = `${source}|${target}|${isPseudo ? 'p' : 'r'}:${apiKey}`;
+    const key = `${source}|${target}|${fieldKey({ apiKey, isPseudo })}`;
     if (seen.has(key)) return;
     seen.add(key);
     edges.push({ source, target, field: fieldFor(apiKey, isPseudo) });
   };
 
   kept.forEach(({ item, itemType }, source) => {
-    const values = fieldValues(item);
+    const values = item as Record<string, unknown>;
     for (const link of extractLinks(itemType, values, lookup)) {
       const target = nodeIndex.get(link.targetId);
       if (target === undefined) continue;

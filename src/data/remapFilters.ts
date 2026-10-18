@@ -1,5 +1,6 @@
 import type { Filters } from './filterGraph';
 import type { Graph } from './types';
+import { fieldKey } from './types';
 
 /**
  * Carries filters from `prev` over to `next` after a refresh. Models match by
@@ -14,8 +15,6 @@ export function remapFilters(prev: Graph, next: Graph, filters: Filters): Filter
     if (p === undefined || filters.models.has(p)) models.add(i);
   });
 
-  const fieldKey = (f: { apiKey: string; isPseudo: boolean }) =>
-    `${f.isPseudo ? 1 : 0}:${f.apiKey}`;
   const prevFieldIdx = new Map(prev.fields.map((f, i) => [fieldKey(f), i]));
   const fields = new Set<number>();
   next.fields.forEach((f, i) => {

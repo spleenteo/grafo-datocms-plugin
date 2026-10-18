@@ -30,6 +30,16 @@ export type Schema = {
 };
 
 export type NodeStatus = 'published' | 'updated' | 'draft';
+export const NODE_STATUSES: readonly NodeStatus[] = ['published', 'updated', 'draft'];
+
+/** The two arrays of `ctx.currentRole.meta.final_permissions` that decide read access. */
+export type Permissions = {
+  positive_item_type_permissions: unknown[];
+  negative_item_type_permissions: unknown[];
+};
+
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
 export type GraphModel = {
   readonly itemTypeId: string;
@@ -38,6 +48,8 @@ export type GraphModel = {
   count: number;
 };
 export type GraphField = { readonly apiKey: string; readonly isPseudo: boolean };
+/** Identity of a field across graphs: pseudo (tree) fields never collide with real ones. */
+export const fieldKey = (f: GraphField): string => `${f.isPseudo ? 1 : 0}:${f.apiKey}`;
 export type GraphNode = {
   readonly id: string;
   readonly title: string;

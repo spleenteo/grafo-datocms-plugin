@@ -1,0 +1,19 @@
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.sectionHeading {
+  text-transform: uppercase;
+  font-size: var(--font-size-xs);
+  color: var(--color--ink-subtle);
+}
+
+.colorDot {
+  flex: none;
+  border-radius: 50%;
+}

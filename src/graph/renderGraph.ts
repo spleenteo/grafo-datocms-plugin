@@ -14,7 +14,7 @@ import 'd3-transition';
 import type { EnterElement, Selection } from 'd3-selection';
 import { zoom, zoomIdentity, zoomTransform } from 'd3-zoom';
 import type { D3ZoomEvent, ZoomTransform } from 'd3-zoom';
-import { sameVisibleSet } from '../data/filterGraph';
+import { sameSet, sameVisibleSet } from '../data/filterGraph';
 import type { VisibleSet } from '../data/filterGraph';
 import styles from './graph.module.css';
 import { modelColor } from './modelColor';
@@ -101,9 +101,8 @@ export interface RenderGraphHandle {
   destroy(): void;
 }
 
-type RenderLink = SimLink;
 type NodeSelection = Selection<SVGGElement, SimNode, SVGGElement, unknown>;
-type LinkSelection = Selection<SVGLineElement, RenderLink, SVGGElement, unknown>;
+type LinkSelection = Selection<SVGLineElement, SimLink, SVGGElement, unknown>;
 
 const PRETICK_MAX_NODES = 1000;
 const PRETICKS = 300;
@@ -140,12 +139,6 @@ const SMART_MIN_DEGREE = 10;
 const SMART_MIN_SCALE = 1.8;
 const SMART_MAX_NODES = 45;
 
-function sameIdSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
-  if (a.size !== b.size) return false;
-  for (const id of a) if (!b.has(id)) return false;
-  return true;
-}
-
 function reducedMotion(): boolean {
   return (
     typeof window.matchMedia === 'function' &&
@@ -160,7 +153,7 @@ function labelText(title: string): string {
 
 /** Estimated width of the rendered label (same truncation as `labelText`, `…` counted). */
 function labelWidth(title: string): number {
-  return Math.min(Array.from(labelText(title)).length, LABEL_MAX) * LABEL_CHAR_W;
+  return Array.from(labelText(title)).length * LABEL_CHAR_W;
 }
 
 let markerSeq = 0;
@@ -193,7 +186,7 @@ export function renderGraph(
   // and comes back keeps pointing at the same objects.
   const endId = (end: SimLink['source']): string =>
     typeof end === 'object' ? end.id : String(end);
-  const linkByEdge = new Map<number, RenderLink>();
+  const linkByEdge = new Map<number, SimLink>();
   for (const l of data.links) {
     linkByEdge.set(l.edge, {
       source: endId(l.source),
@@ -202,7 +195,7 @@ export function renderGraph(
       edge: l.edge,
     });
   }
-  const allLinks: RenderLink[] = [...linkByEdge.values()];
+  const allLinks: SimLink[] = [...linkByEdge.values()];
 
   // Seeded nodes keep their old place; a node new to this mount starts next
   // to a seeded neighbour (or where d3 would put it when it has none). Runs
@@ -240,7 +233,7 @@ export function renderGraph(
 
   // Mutable render state: reassigned on every update, read by draw/fit.
   let visibleNodes: SimNode[] = [];
-  let visibleLinks: RenderLink[] = [];
+  let visibleLinks: SimLink[] = [];
   let visibleIds = new Set<string>();
   let selectedId: string | null = null;
   // Last setSelection() id, visible or not: an update may make it visible.
@@ -363,7 +356,7 @@ export function renderGraph(
   const markerUrl = `url(#${markerPrefix}-ar)`;
   const markerHiUrl = `url(#${markerPrefix}-ar-hi)`;
 
-  function enterLinks(enter: Selection<EnterElement, RenderLink, SVGGElement, unknown>) {
+  function enterLinks(enter: Selection<EnterElement, SimLink, SVGGElement, unknown>) {
     return enter.append('line').attr('class', styles.link).attr('marker-end', markerUrl);
   }
 
@@ -427,12 +420,12 @@ export function renderGraph(
     return g;
   }
 
-  let linkSel: LinkSelection = linkLayer.selectAll<SVGLineElement, RenderLink>('line');
+  let linkSel: LinkSelection = linkLayer.selectAll<SVGLineElement, SimLink>('line');
   let nodeSel: NodeSelection = nodeLayer.selectAll<SVGGElement, SimNode>('g');
 
-  function join(nodesToShow: SimNode[], linksToShow: RenderLink[], contextIds: Set<string>) {
+  function join(nodesToShow: SimNode[], linksToShow: SimLink[], contextIds: Set<string>) {
     linkSel = linkLayer
-      .selectAll<SVGLineElement, RenderLink>('line')
+      .selectAll<SVGLineElement, SimLink>('line')
       .data(linksToShow, (d) => d.edge)
       .join(enterLinks, (u) => u, (x) => x.remove());
     nodeSel = nodeLayer
@@ -692,14 +685,14 @@ export function renderGraph(
 
   // Built on the initial visible subset; nodes outside it get their x/y
   // from d3 when an update first adds them.
-  const linkForce = forceLink<SimNode, RenderLink>(visibleLinks)
+  const linkForce = forceLink<SimNode, SimLink>(visibleLinks)
     .id((d) => d.id)
     .strength(0.55);
   const chargeForce = forceManyBody<SimNode>();
   const xForce = forceX<SimNode>(0);
   const yForce = forceY<SimNode>(0);
   const collideForce = forceCollide<SimNode>();
-  const simulation = forceSimulation<SimNode, RenderLink>(visibleNodes)
+  const simulation = forceSimulation<SimNode, SimLink>(visibleNodes)
     .force('link', linkForce)
     .force('charge', chargeForce)
     .force('x', xForce)
@@ -927,7 +920,7 @@ export function renderGraph(
       paintLabels();
     },
     setQuery(next: ReadonlySet<string>) {
-      if (destroyed || sameIdSet(next, matchIds)) return;
+      if (destroyed || sameSet(next, matchIds)) return;
       matchIds = new Set(next);
       paint();
     },
