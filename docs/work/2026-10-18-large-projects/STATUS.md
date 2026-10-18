@@ -1,8 +1,8 @@
 ---
 status: open
-phase: impact
-slice: null
-step: null
+phase: slice
+slice: V1
+step: close
 work: large-projects
 stack: react
 updated: 2026-10-18
@@ -27,3 +27,4 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 
 <!-- date — step — done — remaining — wall-clock — cost -->
 - 2026-10-18 — slicing — measured Acacia, wrote slices — impact, then V1 plan — — —
+- 2026-10-18 — V1 execute — T1–T3 done, reviews applied, crash on mount fixed — owner check on Acacia/Gestart — — —
