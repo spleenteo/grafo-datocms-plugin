@@ -99,6 +99,16 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 **Gotchas**
 - Simulation must be stopped/cleaned up on unmount; re-render must not restart the layout from scratch.
 
+**Deviations found while planning V3**
+- Node status encoding (`updated` ring, `draft` hollow dashed dot) moved here from V4: it is part of drawing a node; V4 keeps the status filter chips.
+- Node drag added (POC behaviour, a few lines in the renderer).
+- Self-links neither drawn nor counted in degree (closes the V2 ruling).
+- Large graphs: synchronous pre-tick only up to 2000 nodes, animated layout above, so the iframe never blocks for seconds.
+- Node names via native `<title>` tooltip only; labels and hover highlight stay in V5.
+- Large-graph threshold lowered to 1000 nodes after review.
+- Keyboard access to nodes (POC `tabindex`/Enter) deferred to V5, with the inspector.
+- No sandbox environment on Gestart: the environment prefix of the record URL is covered by a unit test on `recordEditPath` instead of a manual check.
+
 ## V4 — Filter rail
 
 **In**
@@ -120,6 +130,7 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - Title search with match count; Enter focuses the first match.
 - View controls: label mode (smart / all / on focus), node-distance slider, zoom in/out, fit, relayout.
 - Manual refresh button reloading data from the CMA.
+- Keyboard access to nodes (focusable, Enter selects/opens), deferred from V3.
 
 **Out**
 - Editing records from the plugin.
