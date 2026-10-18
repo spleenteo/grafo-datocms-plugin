@@ -1,8 +1,8 @@
 ---
 status: open
 phase: slice
-slice: V5
-step: close
+slice: V6
+step: plan
 work: content-graph-plugin
 stack: generic
 updated: 2026-10-18
@@ -24,7 +24,7 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - [x] V2 — Graph data from the CMA (spike first)
 - [x] V3 — Graph view
 - [x] V4 — Filter rail
-- [ ] V5 — Role isolation, selection, inspector
+- [x] V5 — Role isolation, selection, inspector
 - [ ] V6 — Search and view controls
 - [ ] V7 — Marketplace release
 
@@ -39,3 +39,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-18 — V3 close — D3 graph view, click opens record; 3 task reviews + final review (6 fixes) — V4 plan — — —
 - 2026-10-18 — spike CDA vs CMA — CDA same graph, 2–3 requests, faster, 10× cheaper, but rejects currentUserAccessToken (401); project token breaks role isolation → stay on CMA; open questions to DatoCMS team; role leaks found (model names, blocks) — V4 close — — —
 - 2026-10-18 — V4 close — filter rail live on the running graph; 3 task reviews + final review (4 fixes) + 2 style fixes — V5 plan (role isolation first) — — —
+- 2026-10-18 — V5 close — role isolation verified with a role token; selection, focus, inspector, keyboard; 4 task reviews (1 fix round) + final review (5 fixes + 1 follow-up) — V6 plan; browser check with a restricted collaborator pending — — —

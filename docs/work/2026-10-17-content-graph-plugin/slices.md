@@ -169,6 +169,13 @@ _Split from the former V5 on 2026-10-18 (too many tasks for one plan): search, l
 **Done**
 - With a role reading one model only, nothing else is loaded or shown (checked with a role-bound token). Selection, focus, inspector and keyboard work on Gestart. Gate green.
 
+**V5 — done on 2026-10-18**
+- Role isolation: `readAccess` (pure, whitelist full read, malformed entries fail closed, 20 tests) on `ctx.currentRole.meta.final_permissions`; `loadGraph` keeps only readable models and uses nested listings (no block listing) for restricted roles. Checked with the "Changelog reader" token: 1 of 19 models, 36 records, 3 requests, no block listing; admin unchanged (248 / 19 / 347, 3 requests). Decision `2026-10-18-nested-listing-for-restricted-roles`.
+- Selection and focus in the renderer (click selects, hover and keyboard focus highlight, halo, labels for focus and neighbours, Tab/Enter/Space); inspector column always present (badges, title, outgoing/incoming via `relationsOf`, Open record, close and Escape).
+- Verified on Gestart by the owner (admin): selection, hover, filters clearing the selection, inspector rows, keyboard, both themes. Restricted-collaborator check in the browser still pending (owner organising a user).
+- Rulings: malformed negative permission entry hides every model; keyboard-focused node is not raised (keeps focus; its label may sit under a neighbour); V6 seams recorded as constraints.
+- Deferred: positive entries with unknown keys still mark their model readable (records filtered by the CMA, never full read); `paint()` cost per hover; no unit test for the per-role request path (covered by the controller script).
+
 ## V6 — Search and view controls
 
 **Constraints from the V5 final review**
