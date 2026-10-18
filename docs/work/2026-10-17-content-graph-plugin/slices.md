@@ -137,6 +137,12 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - The page `h1` goes away in the done state (the design has none).
 - The renderer update seam is T2, after the pure filter (T1), so `update` consumes the filter's real output type.
 
+**V4 — done on 2026-10-18**
+- `src/data/filterGraph.ts` (pure, POC `visible()` semantics, 13 tests); renderer `update(visible)` on the running simulation (keyed by node id and edge index, positions kept, no-op on the same set, fit on next `end`); `FilterRail` per the design (model rows with dot and count, status/field chips, All/None, double-click isolate, outside selection + Both/Out/In, hide orphans, reset); `GraphWorkspace` keyed per graph holds the filter state; model colours in a global stylesheet.
+- Verified on Gestart: no CMA call on filter changes, positions kept; hide orphans 117 of 248; `changelog` only 36, +5 related with outside Both/Out, 0 with In; both themes. After review: secondary text on `--color--ink-subtle`, pills at 4px radius.
+- Rulings: plan executed without the first stop (owner asked); review fixes applied as recommended; V5 shape constraints recorded below instead of V4 code.
+- Spike CDA vs CMA run during the close (`spike-cda-vs-cma.md`): stay on the CMA; role isolation is a hard requirement; two leaks found, scheduled as V5's first task.
+
 ## V5 — Inspector, search, view controls
 
 **In**
@@ -145,6 +151,7 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - View controls: label mode (smart / all / on focus), node-distance slider, zoom in/out, fit, relayout.
 - Manual refresh button reloading data from the CMA.
 - Keyboard access to nodes (focusable, Enter selects/opens), deferred from V3.
+- First task, role isolation (hard requirement, spike CDA vs CMA): models the current role can't read don't appear anywhere (rail, counts); blocks of records the role can't read are not downloaded.
 
 **Constraints from the V4 final review (for the V5 plan)**
 - Refresh: `Filters` hold model/field array indexes, so a refreshed `Graph` must either reset filters (and say so) or remap them by `apiKey`; keep the last graph on screen with a loading indicator instead of swapping the workspace for the spinner, or zoom and filters are lost on every refresh.
