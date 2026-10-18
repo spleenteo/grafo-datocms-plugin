@@ -2,26 +2,23 @@ import type { RawApiTypes } from '@datocms/cma-client-browser';
 import type { Schema, SchemaField, SchemaItemType } from './types';
 
 export function parseSchema(site: RawApiTypes.SiteSelfTargetSchema): Schema {
-  const included = site.included ?? [];
   const fieldsById = new Map<string, RawApiTypes.Field>();
   const rawItemTypes: RawApiTypes.ItemType[] = [];
-
-  for (const resource of included) {
-    if (resource.type === 'field') fieldsById.set(resource.id, resource);
-    else if (resource.type === 'item_type') rawItemTypes.push(resource);
-  }
-
   const fieldsByItemType = new Map<string, SchemaField[]>();
-  for (const field of fieldsById.values()) {
-    const itemTypeId = field.relationships.item_type.data.id;
-    const list = fieldsByItemType.get(itemTypeId) ?? [];
-    list.push({
-      id: field.id,
-      apiKey: field.attributes.api_key,
-      fieldType: field.attributes.field_type,
-      isLocalized: field.attributes.localized,
-    });
-    fieldsByItemType.set(itemTypeId, list);
+
+  for (const resource of site.included ?? []) {
+    if (resource.type === 'field') {
+      fieldsById.set(resource.id, resource);
+      const itemTypeId = resource.relationships.item_type.data.id;
+      let list = fieldsByItemType.get(itemTypeId);
+      if (!list) fieldsByItemType.set(itemTypeId, (list = []));
+      list.push({
+        id: resource.id,
+        apiKey: resource.attributes.api_key,
+        fieldType: resource.attributes.field_type,
+        isLocalized: resource.attributes.localized,
+      });
+    } else if (resource.type === 'item_type') rawItemTypes.push(resource);
   }
 
   const itemTypes = new Map<string, SchemaItemType>();

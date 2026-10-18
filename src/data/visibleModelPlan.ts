@@ -1,5 +1,5 @@
 import { readAccess } from './readAccess';
-import type { Permissions, Schema } from './types';
+import type { Permissions, Schema, SchemaItemType } from './types';
 
 export type VisibleModelPlan = {
   /** Ids of the (non-block) models to list: readable by the role and not excluded. */
@@ -23,16 +23,18 @@ export function visibleModelPlan(
   const allModelIds = [...schema.itemTypes.values()].filter((t) => !t.isBlock).map((t) => t.id);
   const access = readAccess(permissions, environment, allModelIds);
   const excluded = new Set(excludedModelApiKeys);
-  const loaded = new Set(
-    [...access.readableModelIds].filter(
-      (id) => !excluded.has(schema.itemTypes.get(id)?.apiKey ?? ''),
-    ),
-  );
-  const itemTypes = new Map(
-    [...schema.itemTypes].filter(([id, t]) => t.isBlock || loaded.has(id)),
-  );
+  const readable = access.readableModelIds;
+  const modelIds: string[] = [];
+  const itemTypes = new Map<string, SchemaItemType>();
+  for (const [id, t] of schema.itemTypes) {
+    if (t.isBlock) itemTypes.set(id, t);
+    else if (readable.has(id) && !excluded.has(t.apiKey)) {
+      modelIds.push(id);
+      itemTypes.set(id, t);
+    }
+  }
   return {
-    modelIds: allModelIds.filter((id) => loaded.has(id)),
+    modelIds,
     schema: { locales: schema.locales, itemTypes },
     isFullRead: access.isFullRead,
   };

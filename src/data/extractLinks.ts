@@ -1,4 +1,4 @@
-import type { RawItem, Schema, SchemaItemType } from './types';
+import type { RawItem, Schema, SchemaField, SchemaItemType } from './types';
 import { isRecord } from './types';
 
 export type ExtractedLink = { fieldApiKey: string; targetId: string };
@@ -13,6 +13,26 @@ type Collector = {
   visitedBlocks: Set<string>;
   targets: Set<string>;
 };
+
+const RELATION_FIELD_TYPES = new Set([
+  'link',
+  'links',
+  'rich_text',
+  'single_block',
+  'structured_text',
+]);
+
+const relationFieldsCache = new WeakMap<SchemaItemType, SchemaField[]>();
+
+/** Fields that can hold a link, computed once per item type. */
+function relationFields(itemType: SchemaItemType): SchemaField[] {
+  let list = relationFieldsCache.get(itemType);
+  if (!list) {
+    list = itemType.fields.filter((f) => RELATION_FIELD_TYPES.has(f.fieldType));
+    relationFieldsCache.set(itemType, list);
+  }
+  return list;
+}
 
 const STRUCTURED_LINK_TYPES = new Set(['itemLink', 'inlineItem']);
 const STRUCTURED_BLOCK_TYPES = new Set(['block', 'inlineBlock']);
@@ -101,23 +121,25 @@ function collectValue(fieldType: string, value: unknown, c: Collector): void {
   }
 }
 
+function collectField(field: SchemaField, values: Record<string, unknown>, c: Collector): void {
+  const value = values[field.apiKey];
+  if (value === null || value === undefined) return;
+  if (field.isLocalized) {
+    if (!isRecord(value)) return;
+    for (const localeValue of Object.values(value)) {
+      collectValue(field.fieldType, localeValue, c);
+    }
+  } else {
+    collectValue(field.fieldType, value, c);
+  }
+}
+
 function collectFields(
   itemType: SchemaItemType,
   values: Record<string, unknown>,
   c: Collector,
 ): void {
-  for (const field of itemType.fields) {
-    const value = values[field.apiKey];
-    if (value === null || value === undefined) continue;
-    if (field.isLocalized) {
-      if (!isRecord(value)) continue;
-      for (const localeValue of Object.values(value)) {
-        collectValue(field.fieldType, localeValue, c);
-      }
-    } else {
-      collectValue(field.fieldType, value, c);
-    }
-  }
+  for (const field of relationFields(itemType)) collectField(field, values, c);
 }
 
 /**
@@ -130,13 +152,12 @@ export function extractLinks(
   lookup: ExtractLookup,
 ): ExtractedLink[] {
   const result: ExtractedLink[] = [];
-  for (const field of itemType.fields) {
-    const c: Collector = {
-      lookup,
-      visitedBlocks: new Set(),
-      targets: new Set(),
-    };
-    collectFields({ ...itemType, fields: [field] }, values, c);
+  const c: Collector = { lookup, visitedBlocks: new Set(), targets: new Set() };
+  for (const field of relationFields(itemType)) {
+    if (values[field.apiKey] == null) continue;
+    c.visitedBlocks.clear();
+    c.targets.clear();
+    collectField(field, values, c);
     for (const targetId of c.targets) {
       result.push({ fieldApiKey: field.apiKey, targetId });
     }

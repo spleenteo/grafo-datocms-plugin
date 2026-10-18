@@ -104,11 +104,8 @@ export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]
   };
 
   const edges: GraphEdge[] = [];
-  const seen = new Set<string>();
+  // extractLinks dedupes per field and the tree pseudo-field is added once per record.
   const addEdge = (source: number, target: number, apiKey: string, isPseudo: boolean) => {
-    const key = `${source}|${target}|${fieldKey({ apiKey, isPseudo })}`;
-    if (seen.has(key)) return;
-    seen.add(key);
     edges.push({ source, target, field: fieldFor(apiKey, isPseudo) });
   };
 
