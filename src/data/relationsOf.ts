@@ -6,7 +6,7 @@ export function nodeIndexById(graph: Graph): Map<string, number> {
   return new Map(graph.nodes.map((n, i) => [n.id, i]));
 }
 
-/** Links of one node over the whole graph, self-links excluded, sorted by field apiKey then title. */
+/** Links of one node over the whole graph, self-links excluded, sorted by field label, then api key, then title. */
 export function relationsOf(
   graph: Graph,
   nodeIndex: number,
@@ -19,6 +19,7 @@ export function relationsOf(
     else if (e.target === nodeIndex) incoming.push({ nodeIndex: e.source, field: e.field });
   }
   const compare = (a: Relation, b: Relation) =>
+    graph.fields[a.field].label.localeCompare(graph.fields[b.field].label) ||
     graph.fields[a.field].apiKey.localeCompare(graph.fields[b.field].apiKey) ||
     graph.nodes[a.nodeIndex].title.localeCompare(graph.nodes[b.nodeIndex].title);
   return { outgoing: outgoing.sort(compare), incoming: incoming.sort(compare) };

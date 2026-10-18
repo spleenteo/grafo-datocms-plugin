@@ -95,7 +95,7 @@ export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]
       idx = fields.length;
       const label = isPseudo
         ? 'parent (tree)'
-        : (itemType.fields.find((f) => f.apiKey === apiKey)?.label ?? apiKey);
+        : (itemType.fields.find((f) => f.apiKey === apiKey)?.label || apiKey);
       fields.push({ apiKey, isPseudo, model, label });
       fieldIndex.set(key, idx);
     }

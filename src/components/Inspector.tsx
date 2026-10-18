@@ -1,7 +1,7 @@
 import { Button } from 'datocms-react-ui';
 import { useEffect, useMemo, useState } from 'react';
 import { relationsOf, type Relation } from '../data/relationsOf';
-import { fieldLabel } from '../data/types';
+import { fieldLabel, fieldTitle } from '../data/types';
 import type { Graph, GraphNode, NodeStatus } from '../data/types';
 import { modelColor } from '../graph/modelColor';
 import { STATUS_LABEL } from './labels';
@@ -100,7 +100,9 @@ export default function Inspector({
             style={{ background: modelColor(colorIndex[other.model]) }}
           />
           <span className={styles.rowTitle}>{other.title}</span>
-          <span className={styles.field}>{fieldLabel(field)}</span>
+          <span className={styles.field} title={fieldTitle(field, graph)}>
+            {fieldLabel(field)}
+          </span>
         </button>
       );
     });

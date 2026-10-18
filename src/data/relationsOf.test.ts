@@ -17,8 +17,8 @@ const node = (id: string, title: string) => ({
 const graph: Graph = {
   models: [{ itemTypeId: 't', apiKey: 'm', name: 'M', count: 4 }],
   fields: [
-    { apiKey: 'zeta', isPseudo: false, model: 0, label: 'zeta' },
-    { apiKey: 'alpha', isPseudo: false, model: 0, label: 'alpha' },
+    { apiKey: 'alpha', isPseudo: false, model: 0, label: 'Zeta' },
+    { apiKey: 'zeta', isPseudo: false, model: 0, label: 'Alpha' },
   ],
   nodes: [node('a', 'A'), node('b', 'B'), node('c', 'C'), node('d', 'D')],
   edges: [
@@ -38,7 +38,7 @@ describe('nodeIndexById', () => {
 });
 
 describe('relationsOf', () => {
-  it('splits in/out, drops self-links, sorts by field then title', () => {
+  it('splits in/out, drops self-links, sorts by field label then title', () => {
     const { outgoing, incoming } = relationsOf(graph, 0);
     expect(outgoing).toEqual([
       { nodeIndex: 3, field: 1 },
