@@ -116,6 +116,7 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - "Show relations to records outside the selection" with direction (both / outgoing / incoming).
 - "Hide records without relations". Reset filters.
 - Filtering as a pure function over the built graph, with unit tests.
+- First task: give `renderGraph` an `update(visible)` handle that changes nodes/links on the running simulation (keyed joins and id-keyed node map already exist since V3), keeping positions; filters call it instead of re-mounting.
 
 **Out**
 - Persisting filters across sessions.
