@@ -4,7 +4,10 @@ import { allFilters, filterGraph } from '../data/filterGraph';
 import { nodeIndexById } from '../data/relationsOf';
 import type { Graph } from '../data/types';
 import { recordEditPath } from '../graph/recordEditPath';
+import { searchTitles } from '../data/searchTitles';
+import type { LabelMode } from '../graph/renderGraph';
 import { prepareSimulation } from '../graph/prepareSimulation';
+import CanvasControls from './CanvasControls';
 import FilterRail from './FilterRail';
 import GraphView, { type GraphViewHandle } from './GraphView';
 import Inspector from './Inspector';
@@ -82,8 +85,30 @@ export default function GraphWorkspace({ graph, requestCount, ctx }: Props) {
     viewRef.current?.focusOn(id);
   }, []);
 
+  const [query, setQuery] = useState('');
+  const [labelMode, setLabelMode] = useState<LabelMode>('smart');
+  const [distance, setDistance] = useState(1);
+  const matches = useMemo(
+    () => searchTitles(graph, visibleIds, query),
+    [graph, visibleIds, query],
+  );
+  const matchIds = useMemo(() => new Set(matches), [matches]);
+  const jumpToFirstMatch = useCallback(() => {
+    const first = matches[0];
+    if (first === undefined) return;
+    setSelectedId(first);
+    viewRef.current?.focusOn(first);
+  }, [matches]);
+
   const contextCount = visible.contextIds.size;
   const isEverythingSelected = filters.models.size === graph.models.length;
+  const stats =
+    `${visible.coreIds.size} of ${graph.nodes.length} records` +
+    (contextCount > 0 ? ` (+${contextCount} related)` : '') +
+    ` · ${visible.edgeIndexes.length} relations · ${requestCount} CMA requests` +
+    (filters.showsOutside && isEverythingSelected
+      ? ' · All models are selected: nothing is outside the selection.'
+      : '');
 
   return (
     <div className={styles.workspace}>
@@ -99,21 +124,28 @@ export default function GraphWorkspace({ graph, requestCount, ctx }: Props) {
           data={data}
           visible={visible}
           selectedId={selectedId}
+          labelMode={labelMode}
+          matchIds={matchIds}
+          distance={distance}
           modelName={modelName}
           onSelect={setSelectedId}
         />
-        <div className={styles.overlay}>
-          <p className={styles.counts}>
-            {visible.coreIds.size} of {graph.nodes.length} records
-            {contextCount > 0 && ` (+${contextCount} related)`}
-            {` · ${visible.edgeIndexes.length} relations · ${requestCount} CMA requests`}
-          </p>
-          {filters.showsOutside && isEverythingSelected && (
-            <p className={styles.hint}>
-              All models are selected: nothing is outside the selection.
-            </p>
-          )}
-        </div>
+        <CanvasControls
+          query={query}
+          onQueryChange={setQuery}
+          onSearchEnter={jumpToFirstMatch}
+          matchCount={matches.length}
+          labelMode={labelMode}
+          onLabelModeChange={setLabelMode}
+          distance={distance}
+          onDistanceChange={setDistance}
+          onZoomIn={() => viewRef.current?.zoomBy(1.35)}
+          onZoomOut={() => viewRef.current?.zoomBy(1 / 1.35)}
+          onFit={() => viewRef.current?.fit()}
+          onRelayout={() => viewRef.current?.relayout()}
+          stats={stats}
+          isReloadDisabled
+        />
       </div>
       <Inspector
         graph={graph}

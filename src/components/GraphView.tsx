@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import { renderGraph, type RenderGraphHandle } from '../graph/renderGraph';
+import { renderGraph, type LabelMode, type RenderGraphHandle } from '../graph/renderGraph';
 import type { VisibleSet } from '../data/filterGraph';
 import type { prepareSimulation } from '../graph/prepareSimulation';
 import styles from './GraphView.module.css';
@@ -8,16 +8,22 @@ interface Props {
   data: ReturnType<typeof prepareSimulation>;
   visible: VisibleSet;
   selectedId: string | null;
+  labelMode: LabelMode;
+  matchIds: ReadonlySet<string>;
+  distance: number;
   modelName: (model: number) => string;
   onSelect: (id: string | null) => void;
 }
 
 export interface GraphViewHandle {
   focusOn(id: string): void;
+  zoomBy(factor: number): void;
+  fit(): void;
+  relayout(): void;
 }
 
 const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
-  { data, visible, selectedId, modelName, onSelect },
+  { data, visible, selectedId, labelMode, matchIds, distance, modelName, onSelect },
   ref,
 ) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -30,7 +36,23 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
 
-  useImperativeHandle(ref, () => ({ focusOn: (id) => handleRef.current?.focusOn(id) }), []);
+  const labelModeRef = useRef(labelMode);
+  labelModeRef.current = labelMode;
+  const matchIdsRef = useRef(matchIds);
+  matchIdsRef.current = matchIds;
+  const distanceRef = useRef(distance);
+  distanceRef.current = distance;
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusOn: (id) => handleRef.current?.focusOn(id),
+      zoomBy: (factor) => handleRef.current?.zoomBy(factor),
+      fit: () => handleRef.current?.fit(),
+      relayout: () => handleRef.current?.relayout(),
+    }),
+    [],
+  );
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -39,6 +61,9 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
       modelName,
       onSelect: (id) => onSelectRef.current(id),
       initialVisible: visibleRef.current,
+      labelMode: labelModeRef.current,
+      distance: distanceRef.current,
+      matchIds: matchIdsRef.current,
     });
     handleRef.current = handle;
     // A no-op unless the visible set changed since the mount read it.
@@ -58,6 +83,18 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
   useEffect(() => {
     handleRef.current?.setSelection(selectedId);
   }, [selectedId, visible]);
+
+  useEffect(() => {
+    handleRef.current?.setLabelMode(labelMode);
+  }, [labelMode]);
+
+  useEffect(() => {
+    handleRef.current?.setQuery(matchIds);
+  }, [matchIds]);
+
+  useEffect(() => {
+    handleRef.current?.setDistance(distance);
+  }, [distance]);
 
   return <svg ref={svgRef} className={styles.svg} />;
 });

@@ -11,21 +11,3 @@
   min-width: 0;
   position: relative;
 }
-
-.overlay {
-  position: absolute;
-  top: var(--spacing-s);
-  left: var(--spacing-s);
-  font-size: var(--font-size-s);
-  color: var(--color--ink-subtle);
-  pointer-events: none;
-}
-
-.counts,
-.hint {
-  margin: 0;
-}
-
-.hint {
-  margin-top: var(--spacing-xs);
-}
