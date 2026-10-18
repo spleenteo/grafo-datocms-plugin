@@ -26,6 +26,7 @@ export interface GraphViewHandle {
   zoomBy(factor: number): void;
   fit(): void;
   relayout(): void;
+  reframe(): void;
 }
 
 const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
@@ -59,6 +60,7 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
       zoomBy: (factor) => handleRef.current?.zoomBy(factor),
       fit: () => handleRef.current?.fit(),
       relayout: () => handleRef.current?.relayout(),
+      reframe: () => handleRef.current?.reframe(),
     }),
     [],
   );

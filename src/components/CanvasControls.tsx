@@ -1,7 +1,54 @@
 import { Button, ButtonGroup, ButtonGroupButton, TextInput } from 'datocms-react-ui';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import type { LabelMode } from '../graph/renderGraph';
 import styles from './CanvasControls.module.css';
+
+function Icon({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={16}
+      height={16}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+
+const PlusIcon = () => (
+  <Icon>
+    <path d="M12 5v14" />
+    <path d="M5 12h14" />
+  </Icon>
+);
+const MinusIcon = () => (
+  <Icon>
+    <path d="M5 12h14" />
+  </Icon>
+);
+const FrameIcon = () => (
+  <Icon>
+    <path d="M4 9V4h5" />
+    <path d="M15 4h5v5" />
+    <path d="M20 15v5h-5" />
+    <path d="M9 20H4v-5" />
+  </Icon>
+);
+const ShuffleIcon = () => (
+  <Icon>
+    <path d="M16 3h5v5" />
+    <path d="M4 20L21 3" />
+    <path d="M21 16v5h-5" />
+    <path d="M15 15l6 6" />
+    <path d="M4 4l5 5" />
+  </Icon>
+);
 
 interface Props {
   query: string;
@@ -108,20 +155,20 @@ export default function CanvasControls(props: Props) {
           </label>
           <div className={`${styles.zoomStack} ${styles.auto}`}>
             <button type="button" title="Zoom in" onClick={props.onZoomIn}>
-              <span aria-hidden="true">+</span>
+              <PlusIcon />
               <span className={styles.srOnly}>Zoom in</span>
             </button>
             <button type="button" title="Zoom out" onClick={props.onZoomOut}>
-              <span aria-hidden="true">−</span>
+              <MinusIcon />
               <span className={styles.srOnly}>Zoom out</span>
             </button>
             <button type="button" title="Fit to screen" onClick={props.onFit}>
-              <span aria-hidden="true">⤢</span>
+              <FrameIcon />
               <span className={styles.srOnly}>Fit to screen</span>
             </button>
-            <button type="button" title="Relayout" onClick={props.onRelayout}>
-              <span aria-hidden="true">↻</span>
-              <span className={styles.srOnly}>Relayout</span>
+            <button type="button" title="Rearrange layout" onClick={props.onRelayout}>
+              <ShuffleIcon />
+              <span className={styles.srOnly}>Rearrange layout</span>
             </button>
           </div>
         </div>

@@ -146,6 +146,7 @@ export default function GraphWorkspace({
         colorIndex={data.colorIndex}
         filters={filters}
         onChange={setFilters}
+        onReframe={() => viewRef.current?.reframe()}
         onHelp={() =>
           void ctxRef.current.openModal({ id: 'help', title: 'Grafo help', width: 'm', initialHeight: 480 })
         }

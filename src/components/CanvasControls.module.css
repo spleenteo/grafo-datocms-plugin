@@ -104,7 +104,9 @@
   border: 0;
   background: transparent;
   color: var(--color--ink);
-  font-size: var(--font-size-m);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 

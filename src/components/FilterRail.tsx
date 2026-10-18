@@ -10,6 +10,7 @@ interface Props {
   colorIndex: number[];
   filters: Filters;
   onChange: (update: (prev: Filters) => Filters) => void;
+  onReframe: () => void;
   onHelp: () => void;
 }
 
@@ -55,7 +56,7 @@ function GroupHeader({
   );
 }
 
-export default function FilterRail({ graph, colorIndex, filters, onChange, onHelp }: Props) {
+export default function FilterRail({ graph, colorIndex, filters, onChange, onReframe, onHelp }: Props) {
   const set = (patch: Partial<Filters>) => onChange((prev) => ({ ...prev, ...patch }));
   const toggle = (key: 'models' | 'statuses' | 'fields', value: number | NodeStatus) =>
     onChange((prev) => ({ ...prev, [key]: toggled(prev[key] as ReadonlySet<number | NodeStatus>, value) }));
@@ -83,8 +84,14 @@ export default function FilterRail({ graph, colorIndex, filters, onChange, onHel
       <section className={styles.section}>
         <GroupHeader
           title="Models"
-          onAll={() => set({ models: allFilters(graph).models })}
-          onNone={() => set({ models: new Set() })}
+          onAll={() => {
+            onReframe();
+            set({ models: allFilters(graph).models });
+          }}
+          onNone={() => {
+            onReframe();
+            set({ models: new Set() });
+          }}
         />
         <div className={styles.models}>
           {modelOrder.map((m) => {
@@ -97,7 +104,10 @@ export default function FilterRail({ graph, colorIndex, filters, onChange, onHel
                 tabIndex={0}
                 aria-pressed={isOn}
                 onClick={() => toggle('models', m)}
-                onDoubleClick={() => set({ models: new Set([m]) })}
+                onDoubleClick={() => {
+                  onReframe();
+                  set({ models: new Set([m]) });
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -198,7 +208,10 @@ export default function FilterRail({ graph, colorIndex, filters, onChange, onHel
       </section>
 
       <div className={styles.actions}>
-        <Button buttonType="muted" buttonSize="s" onClick={() => onChange(() => allFilters(graph))}>
+        <Button buttonType="muted" buttonSize="s" onClick={() => {
+            onReframe();
+            onChange(() => allFilters(graph));
+          }}>
           Reset filters
         </Button>
         <Button buttonType="muted" buttonSize="s" onClick={onHelp}>
