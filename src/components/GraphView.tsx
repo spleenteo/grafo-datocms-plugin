@@ -1,6 +1,4 @@
-import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { useEffect, useRef } from 'react';
-import { recordEditPath } from '../graph/recordEditPath';
 import { renderGraph, type RenderGraphHandle } from '../graph/renderGraph';
 import type { VisibleSet } from '../data/filterGraph';
 import type { prepareSimulation } from '../graph/prepareSimulation';
@@ -10,13 +8,16 @@ interface Props {
   data: ReturnType<typeof prepareSimulation>;
   visible: VisibleSet;
   modelName: (model: number) => string;
-  ctx: RenderPageCtx;
+  onSelect?: (id: string | null) => void;
 }
 
-export default function GraphView({ data, visible, modelName, ctx }: Props) {
+const noop = () => {};
+
+export default function GraphView({ data, visible, modelName, onSelect = noop }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const ctxRef = useRef(ctx);
-  ctxRef.current = ctx;
+  // Read through a ref so a new callback never re-mounts the SVG.
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
   const handleRef = useRef<RenderGraphHandle | null>(null);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
@@ -26,17 +27,7 @@ export default function GraphView({ data, visible, modelName, ctx }: Props) {
     if (!svg) return;
     const handle = renderGraph(svg, data, {
       modelName,
-      onOpen: (node) => {
-        const c = ctxRef.current;
-        c.navigateTo(
-          recordEditPath({
-            isEnvironmentPrimary: c.isEnvironmentPrimary,
-            environment: c.environment,
-            itemTypeId: node.itemTypeId,
-            itemId: node.id,
-          }),
-        );
-      },
+      onSelect: (id) => onSelectRef.current(id),
     });
     handleRef.current = handle;
     handle.update(visibleRef.current);

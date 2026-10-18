@@ -50,3 +50,77 @@
   stroke: var(--c);
   stroke-width: 1.5;
 }
+
+.arrowHi {
+  fill: var(--color--ink);
+}
+
+.link.hi {
+  stroke: var(--color--ink);
+  stroke-width: 1.6;
+  opacity: 1;
+}
+
+.link.dim {
+  opacity: 0.12;
+}
+
+.node.dim {
+  opacity: 0.12;
+}
+
+.node:focus {
+  outline: none;
+}
+
+.node:focus-visible {
+  outline: 2px solid var(--color--focus--border);
+  outline-offset: 2px;
+}
+
+.node:focus-visible .dot {
+  stroke: var(--color--focus--border);
+  stroke-width: 2.5;
+}
+
+/* Selected node only; the `updated` ring sits at r + 3.5, the halo at r + 7. */
+.halo {
+  display: none;
+  fill: var(--c);
+  fill-opacity: 0.2;
+  stroke: none;
+}
+
+.node.selected .halo {
+  display: inline;
+}
+
+.label {
+  display: none;
+  font-size: 11px;
+  fill: var(--color--ink);
+  paint-order: stroke;
+  stroke: var(--color--surface);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+  pointer-events: none;
+  user-select: none;
+}
+
+.node.show .label {
+  display: inline;
+}
+
+.node.ctx .label {
+  font-style: italic;
+}
+
+.node.focused .label {
+  fill: var(--color--surface);
+  stroke: none;
+}
+
+.labelPill {
+  fill: var(--color--ink);
+  pointer-events: none;
+}

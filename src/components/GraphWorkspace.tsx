@@ -13,7 +13,7 @@ interface Props {
   ctx: RenderPageCtx;
 }
 
-export default function GraphWorkspace({ graph, requestCount, ctx }: Props) {
+export default function GraphWorkspace({ graph, requestCount }: Props) {
   const [filters, setFilters] = useState(() => allFilters(graph));
   const data = useMemo(() => prepareSimulation(graph), [graph]);
   const visible = useMemo(() => filterGraph(graph, filters), [graph, filters]);
@@ -34,7 +34,7 @@ export default function GraphWorkspace({ graph, requestCount, ctx }: Props) {
         onChange={setFilters}
       />
       <div className={styles.stage}>
-        <GraphView data={data} visible={visible} modelName={modelName} ctx={ctx} />
+        <GraphView data={data} visible={visible} modelName={modelName} />
         <div className={styles.overlay}>
           <p className={styles.counts}>
             {visible.coreIds.size} of {graph.nodes.length} records

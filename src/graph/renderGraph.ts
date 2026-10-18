@@ -10,7 +10,7 @@ import {
 } from 'd3-force';
 import { select } from 'd3-selection';
 import type { EnterElement, Selection } from 'd3-selection';
-import { zoom, zoomIdentity } from 'd3-zoom';
+import { zoom, zoomIdentity, zoomTransform } from 'd3-zoom';
 import type { D3ZoomEvent } from 'd3-zoom';
 import { sameVisibleSet } from '../data/filterGraph';
 import type { VisibleSet } from '../data/filterGraph';
@@ -20,12 +20,17 @@ import type { prepareSimulation, SimLink, SimNode } from './prepareSimulation';
 
 export interface RenderGraphOptions {
   modelName: (model: number) => string;
-  onOpen: (node: SimNode) => void;
+  /** Node click or Enter/Space → its id; background click → null. The renderer does not change its own selection. */
+  onSelect: (id: string | null) => void;
 }
 
 export interface RenderGraphHandle {
   /** Applies a new visible set on the running simulation; a no-op when it equals the last applied one. */
   update(visible: VisibleSet): void;
+  /** Marks a node as selected (halo, focus when nothing is hovered); an id outside the visible set counts as null. */
+  setSelection(id: string | null): void;
+  /** Centres a visible node at scale max(current, 1.2), no transition; a no-op for an id not visible. */
+  focusOn(id: string): void;
   destroy(): void;
 }
 
@@ -38,6 +43,15 @@ const PRETICKS = 300;
 const FIT_PADDING = 40;
 const FIT_MAX_SCALE = 2;
 const UPDATE_ALPHA = 0.55;
+const FOCUS_MIN_SCALE = 1.2;
+const LABEL_MAX = 30;
+const PILL_PAD_X = 6;
+const PILL_PAD_Y = 3;
+const PILL_RADIUS = 4;
+
+function labelText(title: string): string {
+  return title.length > LABEL_MAX ? `${title.slice(0, LABEL_MAX - 1)}…` : title;
+}
 
 let markerSeq = 0;
 
@@ -46,7 +60,7 @@ export function renderGraph(
   data: ReturnType<typeof prepareSimulation>,
   options: RenderGraphOptions,
 ): RenderGraphHandle {
-  const { modelName, onOpen } = options;
+  const { modelName, onSelect } = options;
 
   // Own copies: d3 writes x/y/vx/vy on nodes and swaps link ends for objects,
   // so a second mount (StrictMode) or re-render never sees mutated input.
@@ -81,6 +95,10 @@ export function renderGraph(
 
   // Mutable render state: reassigned on every update, read by draw/fit.
   let visibleNodes: SimNode[] = allNodes;
+  let visibleLinks: RenderLink[] = allLinks;
+  let visibleIds = new Set(allNodes.map((n) => n.id));
+  let selectedId: string | null = null;
+  let hoveredId: string | null = null;
   let lastApplied: VisibleSet = {
     coreIds: new Set(allNodes.map((n) => n.id)),
     contextIds: new Set(),
@@ -91,25 +109,31 @@ export function renderGraph(
   svg.selectAll('*').remove();
   svg.classed(styles.root, true);
 
-  const markerId = `cg-arrow-${++markerSeq}`;
-  const marker = svg
-    .append('defs')
-    .append('marker')
-    .attr('id', markerId)
-    .attr('class', styles.arrow)
-    .attr('viewBox', '0 0 10 10')
-    .attr('refX', 9)
-    .attr('refY', 5)
-    .attr('markerWidth', 6)
-    .attr('markerHeight', 6)
-    .attr('orient', 'auto');
-  marker.append('path').attr('d', 'M0 0 L10 5 L0 10 z');
+  const markerPrefix = `cg-${++markerSeq}`;
+  const defs = svg.append('defs');
+  function appendMarker(id: string, className: string) {
+    defs
+      .append('marker')
+      .attr('id', id)
+      .attr('class', className)
+      .attr('viewBox', '0 0 10 10')
+      .attr('refX', 9)
+      .attr('refY', 5)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0 0 L10 5 L0 10 z');
+  }
+  appendMarker(`${markerPrefix}-ar`, styles.arrow);
+  appendMarker(`${markerPrefix}-ar-hi`, styles.arrowHi);
 
   const viewport = svg.append('g');
   const linkLayer = viewport.append('g');
   const nodeLayer = viewport.append('g');
 
-  const markerUrl = `url(#${markerId})`;
+  const markerUrl = `url(#${markerPrefix}-ar)`;
+  const markerHiUrl = `url(#${markerPrefix}-ar-hi)`;
 
   function enterLinks(enter: Selection<EnterElement, RenderLink, SVGGElement, unknown>) {
     return enter.append('line').attr('class', styles.link).attr('marker-end', markerUrl);
@@ -122,10 +146,16 @@ export function renderGraph(
       .append('g')
       .attr('class', styles.node)
       .attr('data-status', (d) => d.status)
+      .attr('tabindex', 0)
+      .attr('role', 'button')
+      .attr('aria-label', (d) => `${d.title}, ${modelName(d.model)}`)
       .each(function (d) {
         this.style.setProperty('--c', modelColor(data.colorIndex[d.model] ?? 0));
       });
     g.append('title').text((d) => `${d.title} · ${modelName(d.model)}`);
+    g.append('circle')
+      .attr('class', styles.halo)
+      .attr('r', (d) => d.r + 7);
     g.filter((d) => d.status === 'updated')
       .append('circle')
       .attr('class', styles.ring)
@@ -133,11 +163,30 @@ export function renderGraph(
     g.append('circle')
       .attr('class', styles.dot)
       .attr('r', (d) => d.r);
+    g.append('text')
+      .attr('class', styles.label)
+      .attr('x', (d) => d.r + 5)
+      .attr('y', 4)
+      .text((d) => labelText(d.title));
     g.call(dragBehavior);
     g.on('click', (event: MouseEvent, d) => {
       event.stopPropagation();
-      onOpen(d);
-    });
+      onSelect(d.id);
+    })
+      .on('keydown', (event: KeyboardEvent, d) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        onSelect(d.id);
+      })
+      .on('mouseenter', (_event: MouseEvent, d) => {
+        hoveredId = d.id;
+        paint();
+      })
+      .on('mouseleave', (_event: MouseEvent, d) => {
+        if (hoveredId !== d.id) return;
+        hoveredId = null;
+        paint();
+      });
     return g;
   }
 
@@ -154,6 +203,55 @@ export function renderGraph(
       .data(nodesToShow, (d) => d.id)
       .join(enterNodes, (u) => u, (x) => x.remove());
     nodeSel.classed(styles.ctx, (d) => contextIds.has(d.id));
+  }
+
+  // Focus = hovered node, else selected node (POC `paint()`). Neighbours are
+  // the nodes at the other end of a visible link of the focus node.
+  function paint() {
+    if (destroyed) return;
+    const sel = selectedId !== null && visibleIds.has(selectedId) ? selectedId : null;
+    const hov = hoveredId !== null && visibleIds.has(hoveredId) ? hoveredId : null;
+    const focus = hov ?? sel;
+    const neighbours = new Set<string>();
+    if (focus !== null) {
+      neighbours.add(focus);
+      for (const l of visibleLinks) {
+        const s = endId(l.source);
+        const t = endId(l.target);
+        if (s === focus) neighbours.add(t);
+        if (t === focus) neighbours.add(s);
+      }
+    }
+    nodeSel
+      .classed(styles.selected, (d) => d.id === sel)
+      .classed(styles.focused, (d) => d.id === focus)
+      .classed(styles.dim, (d) => focus !== null && !neighbours.has(d.id))
+      .classed(styles.show, (d) => focus !== null && neighbours.has(d.id));
+    linkSel.each(function (d) {
+      const isHi = focus !== null && (endId(d.source) === focus || endId(d.target) === focus);
+      select(this)
+        .classed(styles.hi, isHi)
+        .classed(styles.dim, focus !== null && !isHi)
+        .attr('marker-end', isHi ? markerHiUrl : markerUrl);
+    });
+
+    nodeLayer.selectAll(`.${styles.labelPill}`).remove();
+    if (focus === null) return;
+    nodeSel
+      .filter((d) => d.id === focus)
+      .each(function () {
+        const text = this.querySelector('text');
+        if (!text) return;
+        const box = text.getBBox();
+        select(this)
+          .insert('rect', 'text')
+          .attr('class', styles.labelPill)
+          .attr('x', box.x - PILL_PAD_X)
+          .attr('y', box.y - PILL_PAD_Y)
+          .attr('width', box.width + 2 * PILL_PAD_X)
+          .attr('height', box.height + 2 * PILL_PAD_Y)
+          .attr('rx', PILL_RADIUS);
+      });
   }
 
   function draw() {
@@ -184,6 +282,11 @@ export function renderGraph(
       viewport.attr('transform', event.transform.toString());
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);
+  // d3-zoom swallows the click that ends a pan, so this only fires on a plain
+  // background click; node clicks stop propagation.
+  svg.on('click', () => {
+    if (!destroyed) onSelect(null);
+  });
   // Reset any transform a previous mount left in the element's zoom state.
   svg.call(zoomBehavior.transform, zoomIdentity);
 
@@ -270,6 +373,7 @@ export function renderGraph(
     });
 
   join(allNodes, allLinks, lastApplied.contextIds);
+  paint();
 
   if (allNodes.length > 0) {
     if (allNodes.length <= PRETICK_MAX_NODES) {
@@ -291,7 +395,8 @@ export function renderGraph(
       const isVisible = (id: string) => visible.coreIds.has(id) || visible.contextIds.has(id);
       // Graph order, not set order, so the DOM order is stable across updates.
       visibleNodes = allNodes.filter((n) => isVisible(n.id));
-      const visibleLinks: RenderLink[] = [];
+      visibleIds = new Set(visibleNodes.map((n) => n.id));
+      visibleLinks = [];
       for (const edge of visible.edgeIndexes) {
         const l = linkByEdge.get(edge);
         // Self-links have no renderer link. A link with a hidden end is
@@ -306,6 +411,10 @@ export function renderGraph(
       simulation.nodes(visibleNodes);
       linkForce.links(visibleLinks);
       join(visibleNodes, visibleLinks, visible.contextIds);
+      // A removed node never fires mouseleave.
+      if (hoveredId !== null && !visibleIds.has(hoveredId)) hoveredId = null;
+      if (selectedId !== null && !visibleIds.has(selectedId)) selectedId = null;
+      paint();
 
       if (visibleNodes.length === 0) {
         fitOnEnd = false;
@@ -316,13 +425,39 @@ export function renderGraph(
       fitOnEnd = true;
       simulation.alpha(UPDATE_ALPHA).restart();
     },
+    setSelection(id: string | null) {
+      if (destroyed) return;
+      const next = id !== null && visibleIds.has(id) ? id : null;
+      if (next === selectedId) return;
+      selectedId = next;
+      paint();
+    },
+    focusOn(id: string) {
+      if (destroyed || !visibleIds.has(id)) return;
+      const n = nodeById.get(id);
+      const w = svgEl.clientWidth;
+      const h = svgEl.clientHeight;
+      if (!n || !w || !h) return;
+      const k = Math.max(zoomTransform(svgEl).k, FOCUS_MIN_SCALE);
+      svg.call(
+        zoomBehavior.transform,
+        zoomIdentity.translate(w / 2 - k * (n.x ?? 0), h / 2 - k * (n.y ?? 0)).scale(k),
+      );
+    },
     destroy() {
       destroyed = true;
+      hoveredId = null;
+      selectedId = null;
       pendingReheat.clear();
       simulation.stop();
       simulation.on('tick', null).on('end', null);
-      nodeSel.on('.drag', null).on('click', null);
-      svg.on('.zoom', null);
+      nodeSel
+        .on('.drag', null)
+        .on('click', null)
+        .on('keydown', null)
+        .on('mouseenter', null)
+        .on('mouseleave', null);
+      svg.on('.zoom', null).on('click', null);
       // `interrupt` is patched onto selections by d3-transition, which d3-zoom
       // imports; no transitions are started here, this is belt and braces.
       (svg as unknown as { interrupt?: () => void }).interrupt?.();
