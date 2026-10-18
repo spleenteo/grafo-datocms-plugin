@@ -1,8 +1,8 @@
 ---
 status: closed
-phase: slice
+phase: done
 slice: V10
-step: plan
+step: null
 work: grafo
 stack: generic
 updated: 2026-10-18
@@ -29,7 +29,7 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - [x] V7 — UI tweaks
 - [x] V8 — Starting models
 - [x] V9 — Hardening
-- [ ] V10 — Marketplace release
+- [x] V10 — Marketplace release (package ready; npm publish is the last step, run after the merge)
 
 ## Log
 
@@ -49,3 +49,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-18 — V9 opened — hardening from the Fable review; V8 still at close (owner check pending) — V9 execute — — —
 - 2026-10-18 — V9 execute — 5 tasks + final review (fixes 6d3eb88); behaviour unchanged, Gestart 197/18/347 3 requests; buildGraph −8% on x40; renderer hover/focus O(degree) — V9 close (owner check) — — —
 - 2026-10-18 — V8 + V9 close — owner check OK; pushed — V10 plan (release) — — —
+- 2026-10-18 — close — V1–V10 done; changelog v1.0.0; work archived; merge, push and npm publish follow with the owner's go — — — —
