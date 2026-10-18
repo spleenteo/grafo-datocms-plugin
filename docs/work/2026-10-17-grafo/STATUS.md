@@ -1,5 +1,5 @@
 ---
-status: open
+status: closed
 phase: slice
 slice: V10
 step: plan
