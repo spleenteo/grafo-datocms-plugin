@@ -27,6 +27,7 @@ export interface GraphViewHandle {
   fit(): void;
   relayout(): void;
   reframe(): void;
+  holdView(): void;
 }
 
 const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
@@ -61,6 +62,7 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
       fit: () => handleRef.current?.fit(),
       relayout: () => handleRef.current?.relayout(),
       reframe: () => handleRef.current?.reframe(),
+      holdView: () => handleRef.current?.holdView(),
     }),
     [],
   );
@@ -82,10 +84,10 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
       matchIds: matchIdsRef.current,
     });
     handleRef.current = handle;
-    // A no-op unless the visible set changed since the mount read it.
-    handle.update(visibleRef.current);
     // A fresh renderer starts with nothing selected.
     handle.setSelection(selectedIdRef.current);
+    // A no-op unless the visible set changed since the mount read it.
+    handle.update(visibleRef.current);
     return () => {
       // Read before destroy(), which stops the simulation and clears the SVG.
       seedRef.current = { positions: handle.positions(), view: handle.viewState() };
@@ -94,13 +96,15 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
     };
   }, [data, modelName]);
 
+  // Selection before update: the update seeds entering nodes at the new
+  // selection, and a deselect clears the focus before the collapse settles.
+  useEffect(() => {
+    handleRef.current?.setSelection(selectedId);
+  }, [selectedId]);
+
   useEffect(() => {
     handleRef.current?.update(visible);
   }, [visible]);
-
-  useEffect(() => {
-    handleRef.current?.setSelection(selectedId);
-  }, [selectedId, visible]);
 
   useEffect(() => {
     handleRef.current?.setLabelMode(labelMode);

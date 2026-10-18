@@ -1,5 +1,6 @@
 import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { expandAround } from '../data/expandAround';
 import { filterGraph } from '../data/filterGraph';
 import { startingFilters } from '../data/startingFilters';
 import { remapFilters } from '../data/remapFilters';
@@ -57,7 +58,7 @@ export default function GraphWorkspace({
     setFilters(filters);
   }
   const data = useMemo(() => prepareSimulation(graph), [graph]);
-  const visible = useMemo(() => filterGraph(graph, filters), [graph, filters]);
+  const filtered = useMemo(() => filterGraph(graph, filters), [graph, filters]);
   const modelName = useCallback(
     (model: number) => graph.models[model]?.name ?? '',
     [graph],
@@ -68,13 +69,38 @@ export default function GraphWorkspace({
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
   const indexById = useMemo(() => nodeIndexById(graph), [graph]);
+  // A selection may sit on an expansion node (the user walks from record to
+  // record), so it is checked against the filtered set only when the filters
+  // change: in this same render, so no frame expands around a stale selection.
+  const [prevFilters, setPrevFilters] = useState(filters);
+  let checkedSelectedId = rawSelectedId;
+  if (filters !== prevFilters) {
+    setPrevFilters(filters);
+    if (
+      checkedSelectedId !== null &&
+      !filtered.coreIds.has(checkedSelectedId) &&
+      !filtered.contextIds.has(checkedSelectedId)
+    ) {
+      checkedSelectedId = null;
+      setSelectedId(null);
+    }
+  }
+  // A selection that left the graph (after a reload) counts as none.
+  const selectedIndex =
+    checkedSelectedId === null ? undefined : indexById.get(checkedSelectedId);
+  const selectedId = selectedIndex === undefined ? null : checkedSelectedId;
+  // The selected record's own relations join the view; deselect collapses them.
+  const visible = useMemo(
+    () =>
+      selectedIndex === undefined
+        ? filtered
+        : expandAround(graph, filtered, selectedIndex, filters),
+    [graph, filtered, selectedIndex, filters],
+  );
   const visibleIds = useMemo(
     () => new Set([...visible.coreIds, ...visible.contextIds]),
     [visible],
   );
-  // A selection that left the visible set (or the graph) counts as none.
-  const selectedId =
-    rawSelectedId !== null && visibleIds.has(rawSelectedId) ? rawSelectedId : null;
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
 
@@ -82,15 +108,24 @@ export default function GraphWorkspace({
     if (rawSelectedId !== null && selectedId === null) setSelectedId(null);
   }, [rawSelectedId, selectedId]);
 
+  // Every user selection (node click, Enter/Space, search Enter, inspector
+  // row) goes through here; null (background click, Esc, close) deselects,
+  // and the collapse that follows keeps the camera where it is.
+  const selectNode = useCallback((id: string | null) => {
+    if (id === null) viewRef.current?.holdView();
+    else viewRef.current?.focusOn(id);
+    setSelectedId(id);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || selectedIdRef.current === null) return;
       if (isTextEntry(e.target)) return;
-      setSelectedId(null);
+      selectNode(null);
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [selectNode]);
 
   const openNode = useCallback(
     (index: number) => {
@@ -107,13 +142,6 @@ export default function GraphWorkspace({
     },
     [graph],
   );
-  // Every user selection (node click, Enter/Space, search Enter, inspector
-  // row) goes through here; null (background click, Esc, close) only deselects.
-  const selectNode = useCallback((id: string | null) => {
-    setSelectedId(id);
-    if (id !== null) viewRef.current?.focusOn(id);
-  }, []);
-
   // Set synchronously on click so a fast double click starts one refresh.
   const reloadStartedRef = useRef(false);
   useEffect(() => {
@@ -196,7 +224,7 @@ export default function GraphWorkspace({
         colorIndex={data.colorIndex}
         onSelectNode={selectNode}
         onOpenNode={openNode}
-        onClose={() => setSelectedId(null)}
+        onClose={() => selectNode(null)}
       />
     </div>
   );

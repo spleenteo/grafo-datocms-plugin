@@ -56,16 +56,28 @@ export interface RenderGraphOptions {
 }
 
 export interface RenderGraphHandle {
-  /** Applies a new visible set on the running simulation; a no-op when it equals the last applied one. */
+  /**
+   * Applies a new visible set on the running simulation; a no-op when it equals the last applied one.
+   * Entering nodes start next to the selected node (else next to a visible neighbour). With a focus
+   * target the camera follows and ends on the focus box instead of the global fit; after `holdView()`
+   * it stays put.
+   */
   update(visible: VisibleSet): void;
-  /** Marks a node as selected (halo, focus when nothing is hovered); an id outside the visible set counts as null. */
+  /**
+   * Marks a node as selected (halo, focus when nothing is hovered); an id outside the visible set counts
+   * as null until an update makes it visible. null also clears the focus target.
+   */
   setSelection(id: string | null): void;
   /**
-   * Animates (450 ms; instant with reduced motion) to centre a visible node, at the scale that fits its
-   * visible neighbours around it (clamped to [0.5, 2]; max(current, 1.2) without neighbours). Never sets
-   * `userMoved`, cancels a pending fit-on-end. A no-op for an id not visible.
+   * Sets the focus target: the camera centres a visible node, at the scale that fits its visible
+   * neighbours around it (clamped to [0.5, 2]; max(current, 1.2) without neighbours). When an update
+   * follows (next frame), its settle follows the focus and ends on it; otherwise it animates (450 ms;
+   * instant with reduced motion). Never sets `userMoved`, cancels a pending fit-on-end. A no-op for an
+   * id not visible. A user gesture, fit, reframe, relayout, zoomBy or setSelection(null) clears it.
    */
   focusOn(id: string): void;
+  /** The next update (this frame) settles without moving the camera: a deselect collapsing the view. */
+  holdView(): void;
   /** No-op when the mode does not change. Never reheats. */
   setLabelMode(mode: LabelMode): void;
   /** Search matches: labelled, and the rest dimmed when nothing has focus. An empty set clears. No-op when the content is unchanged. */
@@ -231,6 +243,8 @@ export function renderGraph(
   let visibleLinks: RenderLink[] = [];
   let visibleIds = new Set<string>();
   let selectedId: string | null = null;
+  // Last setSelection() id, visible or not: an update may make it visible.
+  let requestedId: string | null = null;
   let hoveredId: string | null = null;
   let labelMode: LabelMode = options.labelMode ?? 'smart';
   let distance = options.distance ?? 1;
@@ -246,6 +260,13 @@ export function renderGraph(
   // Last smart threshold on zoom, so a zoom only repaints labels when crossing it.
   let wasSmartScale = false;
   let destroyed = false;
+  // Node the camera should end on (set by focusOn). The next update's settle
+  // follows it; with no update by the next frame, focusFrame animates to it.
+  let focusTarget: string | null = null;
+  let focusFrame: number | null = null;
+  // holdView() waiting for an update(); dropped one frame later.
+  let holdPending = false;
+  let holdFrame: number | null = null;
   let lastApplied: VisibleSet = options.initialVisible ?? {
     coreIds: new Set(allNodes.map((n) => n.id)),
     contextIds: new Set(),
@@ -274,6 +295,34 @@ export function renderGraph(
       // not throw, but it would pull on a node outside the simulation.
       if (!l || !isVisible(endId(l.source)) || !isVisible(endId(l.target))) continue;
       visibleLinks.push(l);
+    }
+  }
+
+  // Nodes entering the visible set (also ones seen before) start next to the
+  // selected node, else next to a neighbour that was already visible, so an
+  // expansion grows out of the record that caused it. Before simulation.nodes().
+  function seedEntering(wasVisible: ReadonlySet<string>) {
+    const sel = selectedId !== null ? nodeById.get(selectedId) : undefined;
+    const anchorOf = (n: SimNode): SimNode | undefined => {
+      if (sel && sel !== n && sel.x !== undefined && sel.y !== undefined) return sel;
+      for (const l of visibleLinks) {
+        const s = endId(l.source);
+        const t = endId(l.target);
+        const other = s === n.id ? t : t === n.id ? s : null;
+        if (other === null || other === n.id || !wasVisible.has(other)) continue;
+        const o = nodeById.get(other);
+        if (o && o.x !== undefined && o.y !== undefined) return o;
+      }
+      return undefined;
+    };
+    for (const n of visibleNodes) {
+      if (wasVisible.has(n.id)) continue;
+      const a = anchorOf(n);
+      if (!a || a.x === undefined || a.y === undefined) continue;
+      n.x = a.x + (Math.random() - 0.5) * 20;
+      n.y = a.y + (Math.random() - 0.5) * 20;
+      n.vx = 0;
+      n.vy = 0;
     }
   }
 
@@ -518,7 +567,10 @@ export function renderGraph(
     .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
       viewport.attr('transform', event.transform.toString());
       scale = event.transform.k;
-      if (event.sourceEvent) userMoved = true;
+      if (event.sourceEvent) {
+        userMoved = true;
+        clearFocusTarget();
+      }
       if (labelMode === 'smart' && (scale >= SMART_MIN_SCALE) !== wasSmartScale) paintLabels();
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);
@@ -575,9 +627,61 @@ export function renderGraph(
     }
   }
 
-  // One step of the camera follow: ease the current transform toward the fit target.
+  // Transform that centres a node at the scale fitting its visible neighbours
+  // (labels included); null when the node is not visible or the SVG has no size.
+  function focusTransform(id: string): ZoomTransform | null {
+    if (!visibleIds.has(id)) return null;
+    const n = nodeById.get(id);
+    const w = svgEl.clientWidth;
+    const h = svgEl.clientHeight;
+    if (!n || !w || !h) return null;
+    const nx = n.x ?? 0;
+    const ny = n.y ?? 0;
+    // Neighbours = the other end of a visible link (same rule as paint()).
+    // Half-extents around the centred node, labels included: the focus and
+    // its neighbours always get a label once selected (focusSet).
+    const self = nodeBox(n, true);
+    let halfW = Math.max(nx - self.x0, self.x1 - nx);
+    let halfH = Math.max(ny - self.y0, self.y1 - ny);
+    let hasNeighbour = false;
+    for (const l of visibleLinks) {
+      const s = endId(l.source);
+      const t = endId(l.target);
+      const other = s === id ? t : t === id ? s : null;
+      if (other === null || other === id) continue;
+      const o = nodeById.get(other);
+      if (!o) continue;
+      hasNeighbour = true;
+      const b = nodeBox(o, true);
+      halfW = Math.max(halfW, nx - b.x0, b.x1 - nx);
+      halfH = Math.max(halfH, ny - b.y0, b.y1 - ny);
+    }
+    let k: number;
+    if (hasNeighbour) {
+      const availW = Math.max(1, w - 2 * FOCUS_PADDING);
+      const availH = Math.max(1, h - 2 * FOCUS_PADDING);
+      const fitK = Math.min(availW / (2 * halfW), availH / (2 * halfH));
+      k = Math.max(FOCUS_SCALE_MIN, Math.min(FOCUS_SCALE_MAX, fitK));
+    } else {
+      k = Math.max(zoomTransform(svgEl).k, FOCUS_MIN_SCALE);
+    }
+    return zoomIdentity.translate(w / 2 - k * nx, h / 2 - k * ny).scale(k);
+  }
+
+  // Programmatic, like fit(): userMoved stays as is.
+  function animateTo(target: ZoomTransform, duration: number) {
+    svg.interrupt();
+    if (reducedMotion()) {
+      svg.call(zoomBehavior.transform, target);
+    } else {
+      svg.transition().duration(duration).call(zoomBehavior.transform, target);
+    }
+  }
+
+  // One step of the camera follow: ease the current transform toward the
+  // focus box when there is a focus target, else toward the fit.
   function followStep() {
-    const target = fitTransform();
+    const target = focusTarget !== null ? focusTransform(focusTarget) : fitTransform();
     if (!target) return;
     const cur = zoomTransform(svgEl);
     const k = cur.k + (target.k - cur.k) * FOLLOW_EASE;
@@ -617,7 +721,8 @@ export function renderGraph(
   applyForces();
 
   // 'unlessMoved': settles started by update/distance; 'always': animated relayout.
-  let fitOnEnd: 'none' | 'unlessMoved' | 'always' = 'none';
+  // 'focus': a settle with a focus target, ends on the focus box.
+  let fitOnEnd: 'none' | 'unlessMoved' | 'always' | 'focus' = 'none';
   // Camera follow for the current settle: set by update/setDistance/relayout
   // when not userMoved and not reduced motion; cleared by a user gesture
   // (userMoved), focusOn, fit and at `end`.
@@ -625,11 +730,28 @@ export function renderGraph(
   // reframe() waiting for an update(); checked one frame later.
   let reframePending = false;
   let reframeFrame: number | null = null;
+
+  function cancelFocusFrame() {
+    if (focusFrame !== null) cancelAnimationFrame(focusFrame);
+    focusFrame = null;
+  }
+
+  // A focus-driven settle ends on the focus box; once cleared it ends nowhere.
+  function clearFocusTarget() {
+    if (focusTarget === null) return;
+    focusTarget = null;
+    cancelFocusFrame();
+    if (fitOnEnd === 'focus') {
+      fitOnEnd = 'none';
+      follow = false;
+    }
+  }
+
   simulation
     .on('tick', () => {
       draw();
       if (!follow) return;
-      if (userMoved) {
+      if (focusTarget === null && userMoved) {
         follow = false;
         return;
       }
@@ -640,7 +762,11 @@ export function renderGraph(
       const mode = fitOnEnd;
       fitOnEnd = 'none';
       follow = false;
-      if (mode === 'always') {
+      if (mode === 'focus') {
+        const target = focusTarget !== null ? focusTransform(focusTarget) : null;
+        focusTarget = null;
+        if (target) animateTo(target, FOCUS_DURATION);
+      } else if (mode === 'always') {
         userMoved = false;
         fit(true);
       } else if (mode === 'unlessMoved' && !userMoved) {
@@ -670,6 +796,7 @@ export function renderGraph(
       // nor refit when the drag's settle ends.
       follow = false;
       fitOnEnd = 'none';
+      clearFocusTarget();
       d.fx = d.x;
       d.fy = d.y;
     })
@@ -709,8 +836,15 @@ export function renderGraph(
   return {
     update(visible: VisibleSet) {
       if (destroyed || sameVisibleSet(visible, lastApplied)) return;
+      const hold = holdPending;
+      holdPending = false;
+      // The focus target (if any) is followed by this settle instead.
+      cancelFocusFrame();
       lastApplied = visible;
+      const wasVisible = visibleIds;
       setVisible(visible);
+      selectedId = requestedId !== null && visibleIds.has(requestedId) ? requestedId : null;
+      seedEntering(wasVisible);
 
       // Order matters: nodes first (re-indexes them, keeps x/y/vx/vy), then
       // links (forceLink resolves ends against the current nodes).
@@ -722,74 +856,68 @@ export function renderGraph(
       join(visibleNodes, visibleLinks, visible.contextIds);
       // A removed node never fires mouseleave.
       if (hoveredId !== null && !visibleIds.has(hoveredId)) hoveredId = null;
-      if (selectedId !== null && !visibleIds.has(selectedId)) selectedId = null;
+      if (focusTarget !== null && !visibleIds.has(focusTarget)) focusTarget = null;
       paint();
 
+      const reframing = reframePending;
       reframePending = false;
       if (visibleNodes.length === 0) {
         fitOnEnd = 'none';
         follow = false;
+        focusTarget = null;
         simulation.stop();
         return;
       }
       draw();
-      settle(UPDATE_ALPHA);
+      if (hold && !reframing) {
+        fitOnEnd = 'none';
+        follow = false;
+        simulation.alpha(UPDATE_ALPHA).restart();
+      } else if (focusTarget !== null) {
+        // No initial transition: the follow eases toward the focus box.
+        svg.interrupt();
+        fitOnEnd = 'focus';
+        follow = !reducedMotion();
+        simulation.alpha(UPDATE_ALPHA).restart();
+      } else {
+        settle(UPDATE_ALPHA);
+      }
     },
     setSelection(id: string | null) {
       if (destroyed) return;
+      requestedId = id;
+      if (id === null) clearFocusTarget();
       const next = id !== null && visibleIds.has(id) ? id : null;
       if (next === selectedId) return;
       selectedId = next;
       paint();
     },
     focusOn(id: string) {
-      if (destroyed || !visibleIds.has(id)) return;
-      const n = nodeById.get(id);
-      const w = svgEl.clientWidth;
-      const h = svgEl.clientHeight;
-      if (!n || !w || !h) return;
+      if (destroyed || !visibleIds.has(id) || !nodeById.has(id)) return;
       // A settling fit or follow would overwrite the focus.
       fitOnEnd = 'none';
       follow = false;
       reframePending = false;
-      const nx = n.x ?? 0;
-      const ny = n.y ?? 0;
-      // Neighbours = the other end of a visible link (same rule as paint()).
-      // Half-extents around the centred node, labels included: the focus and
-      // its neighbours always get a label once selected (focusSet).
-      const self = nodeBox(n, true);
-      let halfW = Math.max(nx - self.x0, self.x1 - nx);
-      let halfH = Math.max(ny - self.y0, self.y1 - ny);
-      let hasNeighbour = false;
-      for (const l of visibleLinks) {
-        const s = endId(l.source);
-        const t = endId(l.target);
-        const other = s === id ? t : t === id ? s : null;
-        if (other === null || other === id) continue;
-        const o = nodeById.get(other);
-        if (!o) continue;
-        hasNeighbour = true;
-        const b = nodeBox(o, true);
-        halfW = Math.max(halfW, nx - b.x0, b.x1 - nx);
-        halfH = Math.max(halfH, ny - b.y0, b.y1 - ny);
-      }
-      let k: number;
-      if (hasNeighbour) {
-        const availW = Math.max(1, w - 2 * FOCUS_PADDING);
-        const availH = Math.max(1, h - 2 * FOCUS_PADDING);
-        const fitK = Math.min(availW / (2 * halfW), availH / (2 * halfH));
-        k = Math.max(FOCUS_SCALE_MIN, Math.min(FOCUS_SCALE_MAX, fitK));
-      } else {
-        k = Math.max(zoomTransform(svgEl).k, FOCUS_MIN_SCALE);
-      }
-      const target = zoomIdentity.translate(w / 2 - k * nx, h / 2 - k * ny).scale(k);
-      // Programmatic: the zoom events carry no sourceEvent, so userMoved stays as is.
-      svg.interrupt();
-      if (reducedMotion()) {
-        svg.call(zoomBehavior.transform, target);
-      } else {
-        svg.transition().duration(FOCUS_DURATION).call(zoomBehavior.transform, target);
-      }
+      focusTarget = id;
+      cancelFocusFrame();
+      // The selection reaches update() through a React effect; if none
+      // arrives by the next frame the visible set did not change.
+      focusFrame = requestAnimationFrame(() => {
+        focusFrame = null;
+        if (destroyed || focusTarget !== id) return;
+        focusTarget = null;
+        const target = focusTransform(id);
+        if (target) animateTo(target, FOCUS_DURATION);
+      });
+    },
+    holdView() {
+      if (destroyed) return;
+      holdPending = true;
+      if (holdFrame !== null) cancelAnimationFrame(holdFrame);
+      holdFrame = requestAnimationFrame(() => {
+        holdFrame = null;
+        holdPending = false;
+      });
     },
     setLabelMode(mode: LabelMode) {
       if (destroyed || mode === labelMode) return;
@@ -806,6 +934,7 @@ export function renderGraph(
       if (destroyed) return;
       userMoved = true;
       follow = false;
+      clearFocusTarget();
       svg.interrupt();
       svg
         .transition()
@@ -815,6 +944,7 @@ export function renderGraph(
     fit() {
       if (destroyed) return;
       userMoved = false;
+      clearFocusTarget();
       // The explicit fit wins over the follow; a running settle still fits at end.
       follow = false;
       fit(true);
@@ -822,6 +952,7 @@ export function renderGraph(
     reframe() {
       if (destroyed) return;
       userMoved = false;
+      clearFocusTarget();
       reframePending = true;
       if (reframeFrame !== null) cancelAnimationFrame(reframeFrame);
       // The filter change reaches update() through a React effect; if none
@@ -839,6 +970,7 @@ export function renderGraph(
       fitOnEnd = 'none';
       follow = false;
       userMoved = false;
+      clearFocusTarget();
       if (visibleNodes.length === 0) return;
       for (const n of allNodes) {
         n.fx = null;
@@ -886,6 +1018,11 @@ export function renderGraph(
       reframePending = false;
       if (reframeFrame !== null) cancelAnimationFrame(reframeFrame);
       reframeFrame = null;
+      focusTarget = null;
+      cancelFocusFrame();
+      holdPending = false;
+      if (holdFrame !== null) cancelAnimationFrame(holdFrame);
+      holdFrame = null;
       hoveredId = null;
       selectedId = null;
       pendingReheat.clear();
