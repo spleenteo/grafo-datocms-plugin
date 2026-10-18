@@ -18,6 +18,7 @@ import { sameSet, sameVisibleSet } from '../data/filterGraph';
 import type { VisibleSet } from '../data/filterGraph';
 import { buildAdjacency, diffSets } from './adjacency';
 import styles from './graph.module.css';
+import { pickLabelBudget } from './labelBudget';
 import { modelColor } from './modelColor';
 import { relativeRadius } from './prepareSimulation';
 import type { prepareSimulation, SimLink, SimNode } from './prepareSimulation';
@@ -111,6 +112,9 @@ interface NodeEls {
   halo: SVGCircleElement | null;
   ring: SVGCircleElement | null;
   dot: SVGCircleElement | null;
+  /** Translated to the node edge; `box` inside it is scaled to hold the label at screen size. */
+  anchor: SVGGElement | null;
+  box: SVGGElement | null;
   label: SVGTextElement | null;
 }
 
@@ -149,9 +153,12 @@ const HOVER_DELAY = 150;
 const HOVER_FOCUS_MAX_NODES = 600;
 const DISTANCE_ALPHA = 0.9;
 const RELAYOUT_SPREAD = 30;
-const SMART_MIN_DEGREE = 10;
-const SMART_MIN_SCALE = 1.8;
+// Smart mode: every label up to SMART_MAX_NODES visible nodes, above that the
+// LABEL_BUDGET highest-degree nodes in view (plus focus, hover and matches).
 const SMART_MAX_NODES = 45;
+const LABEL_BUDGET = 40;
+// `--label-k` is rewritten only when it moves by more than this ratio.
+const LABEL_K_EPSILON = 0.01;
 
 function reducedMotion(): boolean {
   return (
@@ -269,7 +276,6 @@ export function renderGraph(
   // Set by user wheel/drag on the canvas and by zoomBy; never by fit, focusOn
   // or other programmatic transforms. When set, settles don't fit on `end`.
   let userMoved = (initialPositions && options.initialUserMoved) || false;
-  let scale = 1;
   // Painted state: paint() only touches what changed since. focusSet is the
   // focus + neighbours (`near`), also read by the labels-only pass.
   let focusSet = new Set<string>();
@@ -282,8 +288,10 @@ export function renderGraph(
   let paintFrame: number | null = null;
   // Nodes with the `show` class from the last paintLabels(); read by the fit.
   let shownIds = new Set<string>();
-  // Last smart threshold on zoom, so a zoom only repaints labels when crossing it.
-  let wasSmartScale = false;
+  // Smart-mode budget labels: the top nodes in view, refreshed by refreshBudget().
+  let budgetIds = new Set<string>();
+  // Last value written to `--label-k` on the root svg: max(1, zoom scale).
+  let labelK = 1;
   let destroyed = false;
   // Node the camera should end on (set by focusOn). The next update's settle
   // follows it; with no update by the next frame, focusFrame animates to it.
@@ -417,9 +425,17 @@ export function renderGraph(
     g.append('circle')
       .attr('class', styles.dot)
       .attr('r', (d) => d.r);
-    g.append('text')
+    // The anchor sits at the node edge; the box inside it is scaled by
+    // 1 / --label-k in CSS, so zoom never touches the nodes. The pill goes in
+    // the box too, before the text.
+    g.append('g')
+      .attr('class', styles.labelAnchor)
+      .attr('transform', (d) => `translate(${d.r},0)`)
+      .append('g')
+      .attr('class', styles.labelBox)
+      .append('text')
       .attr('class', styles.label)
-      .attr('x', (d) => d.r + LABEL_GAP)
+      .attr('x', LABEL_GAP)
       .attr('y', 4)
       .text((d) => labelText(d.title));
     g.call(dragBehavior);
@@ -454,6 +470,8 @@ export function renderGraph(
         halo: this.querySelector<SVGCircleElement>(`.${styles.halo}`),
         ring: this.querySelector<SVGCircleElement>(`.${styles.ring}`),
         dot: this.querySelector<SVGCircleElement>(`.${styles.dot}`),
+        anchor: this.querySelector<SVGGElement>(`.${styles.labelAnchor}`),
+        box: this.querySelector<SVGGElement>(`.${styles.labelBox}`),
         label: this.querySelector<SVGTextElement>(`.${styles.label}`),
       });
     });
@@ -492,7 +510,7 @@ export function renderGraph(
       e.halo?.setAttribute('r', String(n.r + 7));
       e.ring?.setAttribute('r', String(n.r + 3.5));
       e.dot?.setAttribute('r', String(n.r));
-      e.label?.setAttribute('x', String(n.r + LABEL_GAP));
+      e.anchor?.setAttribute('transform', `translate(${n.r},0)`);
     }
   }
 
@@ -593,12 +611,8 @@ export function renderGraph(
       for (const id of removed) nodeEls.get(id)?.g.classList.remove(styles.near);
       for (const id of added) nodeEls.get(id)?.g.classList.add(styles.near);
       focusSet = near;
-      if (labelMode === 'smart' && (scale >= SMART_MIN_SCALE) !== wasSmartScale) {
-        paintLabels();
-      } else {
-        for (const id of removed) paintLabel(id);
-        for (const id of added) paintLabel(id);
-      }
+      for (const id of removed) paintLabel(id);
+      for (const id of added) paintLabel(id);
       const hi = new Set(focus !== null ? (incident.get(focus) ?? []) : []);
       const links = diffSets(hiEdges, hi);
       for (const edge of links.removed) setLinkHi(edge, false);
@@ -629,6 +643,7 @@ export function renderGraph(
     }
     focusSet = near;
     paintedHover = hover;
+    computeBudget();
     paintLabels();
     hiEdges = new Set(focus !== null ? (incident.get(focus) ?? []) : []);
     for (const l of visibleLinks) setLinkHi(l.edge, hiEdges.has(l.edge));
@@ -638,24 +653,25 @@ export function renderGraph(
     placePill(focus, true);
   }
 
-  // One pill element, moved to the focused node and measured only when the
-  // focus or the label geometry changed.
+  // One pill element, moved into the focused node's label box and measured only
+  // when the focus or the label geometry changed. The box scale applies to the
+  // pill as well, and getBBox() is in the box's own units.
   let pill: SVGRectElement | null = null;
   function placePill(focus: string | null, remeasure: boolean) {
     const e = focus !== null ? nodeEls.get(focus) : undefined;
     // Moving a focused element in the DOM drops keyboard focus.
     if (e && !pointerDown && e.g !== document.activeElement) select(e.g).raise();
-    if (!e || !e.label) {
+    if (!e || !e.label || !e.box) {
       pill?.remove();
       return;
     }
-    if (!remeasure && pill?.parentNode === e.g) return;
+    if (!remeasure && pill?.parentNode === e.box) return;
     if (!pill) {
       pill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       pill.setAttribute('class', styles.labelPill);
       pill.setAttribute('rx', String(PILL_RADIUS));
     }
-    e.g.insertBefore(pill, e.label);
+    e.box.insertBefore(pill, e.label);
     const box = e.label.getBBox();
     pill.setAttribute('x', String(box.x - PILL_PAD_X));
     pill.setAttribute('y', String(box.y - PILL_PAD_Y));
@@ -664,16 +680,47 @@ export function renderGraph(
   }
 
   // Labels: focus + neighbours, the hovered node and matches always; "All" is a root class;
-  // "Smart" adds hubs, or everything when zoomed in or the graph is small.
+  // "Smart" adds the budget ids, or everything when the graph is small.
   function labelOn(n: SimNode): boolean {
     const isSmart = labelMode === 'smart';
-    const isSmartAll = isSmart && (wasSmartScale || visibleNodes.length <= SMART_MAX_NODES);
+    const isSmartAll = isSmart && visibleNodes.length <= SMART_MAX_NODES;
     return (
       focusSet.has(n.id) ||
       paintedHover === n.id ||
       matchIds.has(n.id) ||
-      (isSmart && (isSmartAll || n.degree >= SMART_MIN_DEGREE))
+      (isSmart && (isSmartAll || budgetIds.has(n.id)))
     );
+  }
+
+  // Graph-unit rectangle currently on screen, from the zoom transform.
+  function viewBox() {
+    const t = zoomTransform(svgEl);
+    return {
+      x0: t.invertX(0),
+      y0: t.invertY(0),
+      x1: t.invertX(svgEl.clientWidth),
+      y1: t.invertY(svgEl.clientHeight),
+    };
+  }
+
+  function computeBudget() {
+    budgetIds = new Set();
+    if (labelMode !== 'smart' || visibleNodes.length <= SMART_MAX_NODES) return;
+    if (!svgEl.clientWidth || !svgEl.clientHeight) return;
+    const candidates = [];
+    for (const n of visibleNodes) {
+      if (n.x !== undefined && n.y !== undefined) {
+        candidates.push({ id: n.id, degree: n.degree, x: n.x, y: n.y });
+      }
+    }
+    budgetIds = pickLabelBudget(candidates, viewBox(), LABEL_BUDGET);
+  }
+
+  // Budget then labels: on zoom end, simulation end, drag end, setLabelMode.
+  function refreshBudget() {
+    if (destroyed) return;
+    computeBudget();
+    paintLabels();
   }
 
   function paintLabel(id: string) {
@@ -689,7 +736,6 @@ export function renderGraph(
   // Labels-only pass over every node. No link or pill work here.
   function paintLabels() {
     if (destroyed) return;
-    wasSmartScale = scale >= SMART_MIN_SCALE;
     const shown = new Set<string>();
     for (const n of visibleNodes) {
       const el = nodeEls.get(n.id)?.g;
@@ -707,6 +753,9 @@ export function renderGraph(
   }
 
   // Extents of a node including its label when `withLabel`: the label sits to the right.
+  // Label geometry is at labelK = 1, the widest case: above k = 1 the labels are
+  // drawn smaller than assumed, so the fit, focus and camera follow leave more
+  // margin but never clip.
   function nodeBox(n: SimNode, withLabel: boolean) {
     const x = n.x ?? 0;
     const y = n.y ?? 0;
@@ -770,12 +819,21 @@ export function renderGraph(
     .scaleExtent([0.1, 6])
     .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
       viewport.attr('transform', event.transform.toString());
-      scale = event.transform.k;
+      // Labels keep their screen size above k = 1; one root variable, no node writes.
+      const nextK = Math.max(1, event.transform.k);
+      if (Math.abs(nextK / labelK - 1) > LABEL_K_EPSILON) {
+        labelK = nextK;
+        svgEl.style.setProperty('--label-k', String(nextK));
+      }
       if (event.sourceEvent) {
         userMoved = true;
         clearFocusTarget();
       }
-      if (labelMode === 'smart' && (scale >= SMART_MIN_SCALE) !== wasSmartScale) paintLabels();
+    })
+    // Not per frame; and not during a camera follow, whose settle ends with a
+    // simulation `end` (a follow step emits a zoom end every tick).
+    .on('end', () => {
+      if (!destroyed && !follow) refreshBudget();
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);
   // The release can land outside the svg, hence window.
@@ -971,6 +1029,7 @@ export function renderGraph(
       const mode = fitOnEnd;
       fitOnEnd = 'none';
       follow = false;
+      refreshBudget();
       if (mode === 'focus') {
         const target = focusTarget !== null ? focusTransform(focusTarget) : null;
         focusTarget = null;
@@ -1023,6 +1082,7 @@ export function renderGraph(
       if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
+      refreshBudget();
     });
 
   join(visibleNodes, visibleLinks, lastApplied.contextIds);
@@ -1137,7 +1197,7 @@ export function renderGraph(
       if (destroyed || mode === labelMode) return;
       labelMode = mode;
       applyLabelModeClass();
-      paintLabels();
+      refreshBudget();
     },
     setQuery(next: ReadonlySet<string>) {
       if (destroyed || sameSet(next, matchIds)) return;
@@ -1266,6 +1326,7 @@ export function renderGraph(
       nodeEls.clear();
       linkEls.clear();
       pill = null;
+      svgEl.style.removeProperty('--label-k');
       svg
         .classed(styles.root, false)
         .classed(styles.labelsAll, false)

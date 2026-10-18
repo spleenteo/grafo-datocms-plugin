@@ -127,6 +127,17 @@
   user-select: none;
 }
 
+/* Zoomed in, the box shrinks by the zoom scale (set on the root as --label-k,
+   at least 1) so labels keep their on-screen size; the anchor sits at the node edge. */
+.labelAnchor {
+  pointer-events: none;
+}
+
+.labelBox {
+  transform-origin: 0 0;
+  transform: scale(calc(1 / var(--label-k, 1)));
+}
+
 .node.show .label {
   display: inline;
 }
