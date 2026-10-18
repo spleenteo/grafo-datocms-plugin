@@ -1,0 +1,55 @@
+.root {
+  --node-s: 62%;
+  --node-l0: 45%;
+  --node-l1: 58%;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--color--surface);
+  cursor: grab;
+  touch-action: none;
+}
+
+.root:active {
+  cursor: grabbing;
+}
+
+:global([data-color-scheme='dark']) .root {
+  --node-s: 70%;
+  --node-l0: 62%;
+  --node-l1: 74%;
+}
+
+.arrow {
+  fill: var(--color--ink-muted);
+}
+
+.link {
+  fill: none;
+  stroke: var(--color--ink-muted);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.node {
+  cursor: pointer;
+}
+
+.dot {
+  fill: var(--c);
+  stroke: var(--color--surface);
+  stroke-width: 1.5;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 1.5;
+}
+
+.node[data-status='draft'] .dot {
+  fill: var(--color--surface);
+  stroke: var(--c);
+  stroke-width: 2;
+  stroke-dasharray: 3 2;
+}
