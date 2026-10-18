@@ -228,6 +228,9 @@ _Added 2026-10-18 from the owner's review after V6._
 
 ## V8 — Starting models
 
+**Constraint from the V7 final review**
+- Starting filters are built in three places today: the initial state in `GraphWorkspace` (`allFilters`), Reset in `FilterRail`, and models "All". V8 adds one `startingFilters(graph, startingModelIds)` used by the initial state and by Reset (passed to `FilterRail` as a prop); models "All" stays all. After Reload, `remapFilters` keeps switching new models on.
+
 **In**
 - Plugin config screen: an admin picks the models switched on when Grafo opens (default: all readable models).
 - Opening Grafo: those models on in the rail, "Relations outside selection" on (Both), so linked records of other models show as context nodes; the editor switches other models on from the rail.
