@@ -195,6 +195,10 @@ _Split from the former V5 on 2026-10-18 (too many tasks for one plan): search, l
 **Done**
 - All remaining POC interactions available, built on `datocms-react-ui` components. Gate green.
 
+**Deviations found while planning V6**
+- Distance control and Reload button are not in the design: distance floats left of the zoom stack, Reload sits at the end of the stats line (pending the general UI review).
+- Refresh keeps node positions by seeding the re-mounted renderer from the old one (`positions()` → `initialPositions`).
+
 ## V7 — Marketplace release
 
 **In**
