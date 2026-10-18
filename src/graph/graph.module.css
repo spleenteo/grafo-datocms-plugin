@@ -1,7 +1,16 @@
-.root {
+:global(:root) {
   --node-s: 62%;
   --node-l0: 45%;
   --node-l1: 58%;
+}
+
+:global(:root[data-color-scheme='dark']) {
+  --node-s: 70%;
+  --node-l0: 62%;
+  --node-l1: 74%;
+}
+
+.root {
   display: block;
   width: 100%;
   height: 100%;
@@ -12,12 +21,6 @@
 
 .root:active {
   cursor: grabbing;
-}
-
-:global([data-color-scheme='dark']) .root {
-  --node-s: 70%;
-  --node-l0: 62%;
-  --node-l1: 74%;
 }
 
 .arrow {
@@ -52,4 +55,10 @@
   stroke: var(--c);
   stroke-width: 2;
   stroke-dasharray: 3 2;
+}
+
+.node.ctx:not([data-status='draft']) .dot {
+  fill-opacity: 0.45;
+  stroke: var(--c);
+  stroke-width: 1.5;
 }

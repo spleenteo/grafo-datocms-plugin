@@ -9,9 +9,13 @@ import {
   forceY,
 } from 'd3-force';
 import { select } from 'd3-selection';
+import type { EnterElement, Selection } from 'd3-selection';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import type { D3ZoomEvent } from 'd3-zoom';
+import { sameVisibleSet } from '../data/filterGraph';
+import type { VisibleSet } from '../data/filterGraph';
 import styles from './graph.module.css';
+import { modelColor } from './modelColor';
 import type { prepareSimulation, SimLink, SimNode } from './prepareSimulation';
 
 export interface RenderGraphOptions {
@@ -19,29 +23,29 @@ export interface RenderGraphOptions {
   onOpen: (node: SimNode) => void;
 }
 
-interface RenderLink extends SimLink {
-  key: string;
+export interface RenderGraphHandle {
+  /** Applies a new visible set on the running simulation; a no-op when it equals the last applied one. */
+  update(visible: VisibleSet): void;
+  destroy(): void;
 }
+
+type RenderLink = SimLink;
+type NodeSelection = Selection<SVGGElement, SimNode, SVGGElement, unknown>;
+type LinkSelection = Selection<SVGLineElement, RenderLink, SVGGElement, unknown>;
 
 const PRETICK_MAX_NODES = 1000;
 const PRETICKS = 300;
 const FIT_PADDING = 40;
 const FIT_MAX_SCALE = 2;
+const UPDATE_ALPHA = 0.55;
 
 let markerSeq = 0;
-
-function nodeColor(colorIndex: number[], model: number): string {
-  const ci = colorIndex[model] ?? 0;
-  const hue = Math.round((ci * 137.508 + 12) % 360);
-  const l = ci % 2 === 0 ? 'var(--node-l0)' : 'var(--node-l1)';
-  return `hsl(${hue} var(--node-s) ${l})`;
-}
 
 export function renderGraph(
   svgEl: SVGSVGElement,
   data: ReturnType<typeof prepareSimulation>,
   options: RenderGraphOptions,
-): { destroy(): void } {
+): RenderGraphHandle {
   const { modelName, onOpen } = options;
 
   // Own copies: d3 writes x/y/vx/vy on nodes and swaps link ends for objects,
@@ -58,16 +62,30 @@ export function renderGraph(
       r: n.r,
     });
   }
-  const nodes: SimNode[] = [...nodeById.values()];
-  // Link ends are node ids here; the key is taken before forceLink swaps
-  // them for node objects.
+  const allNodes: SimNode[] = [...nodeById.values()];
+  // Link ends are node ids here; forceLink swaps them for the node objects
+  // above, which are stable for the life of the mount, so a link that leaves
+  // and comes back keeps pointing at the same objects.
   const endId = (end: SimLink['source']): string =>
     typeof end === 'object' ? end.id : String(end);
-  const links: RenderLink[] = data.links.map((l) => {
-    const source = endId(l.source);
-    const target = endId(l.target);
-    return { source, target, field: l.field, key: `${source}>${target}@${l.field}` };
-  });
+  const linkByEdge = new Map<number, RenderLink>();
+  for (const l of data.links) {
+    linkByEdge.set(l.edge, {
+      source: endId(l.source),
+      target: endId(l.target),
+      field: l.field,
+      edge: l.edge,
+    });
+  }
+  const allLinks: RenderLink[] = [...linkByEdge.values()];
+
+  // Mutable render state: reassigned on every update, read by draw/fit.
+  let visibleNodes: SimNode[] = allNodes;
+  let lastApplied: VisibleSet = {
+    coreIds: new Set(allNodes.map((n) => n.id)),
+    contextIds: new Set(),
+    edgeIndexes: allLinks.map((l) => l.edge),
+  };
 
   const svg = select(svgEl);
   svg.selectAll('*').remove();
@@ -91,32 +109,52 @@ export function renderGraph(
   const linkLayer = viewport.append('g');
   const nodeLayer = viewport.append('g');
 
-  const linkSel = linkLayer
-    .selectAll<SVGLineElement, RenderLink>('line')
-    .data(links, (d) => d.key)
-    .join('line')
-    .attr('class', styles.link)
-    .attr('marker-end', `url(#${markerId})`);
+  const markerUrl = `url(#${markerId})`;
 
-  const nodeSel = nodeLayer
-    .selectAll<SVGGElement, SimNode>('g')
-    .data(nodes, (d) => d.id)
-    .join('g')
-    .attr('class', styles.node)
-    .attr('data-status', (d) => d.status)
-    .each(function (d) {
-      this.style.setProperty('--c', nodeColor(data.colorIndex, d.model));
+  function enterLinks(enter: Selection<EnterElement, RenderLink, SVGGElement, unknown>) {
+    return enter.append('line').attr('class', styles.link).attr('marker-end', markerUrl);
+  }
+
+  // Used by mount and update. `dragBehavior` is declared further down; it is
+  // only read when join() first runs, after its declaration.
+  function enterNodes(enter: Selection<EnterElement, SimNode, SVGGElement, unknown>) {
+    const g = enter
+      .append('g')
+      .attr('class', styles.node)
+      .attr('data-status', (d) => d.status)
+      .each(function (d) {
+        this.style.setProperty('--c', modelColor(data.colorIndex[d.model] ?? 0));
+      });
+    g.append('title').text((d) => `${d.title} · ${modelName(d.model)}`);
+    g.filter((d) => d.status === 'updated')
+      .append('circle')
+      .attr('class', styles.ring)
+      .attr('r', (d) => d.r + 3.5);
+    g.append('circle')
+      .attr('class', styles.dot)
+      .attr('r', (d) => d.r);
+    g.call(dragBehavior);
+    g.on('click', (event: MouseEvent, d) => {
+      event.stopPropagation();
+      onOpen(d);
     });
-  nodeSel.append('title').text((d) => `${d.title} · ${modelName(d.model)}`);
-  nodeSel
-    .filter((d) => d.status === 'updated')
-    .append('circle')
-    .attr('class', styles.ring)
-    .attr('r', (d) => d.r + 3.5);
-  nodeSel
-    .append('circle')
-    .attr('class', styles.dot)
-    .attr('r', (d) => d.r);
+    return g;
+  }
+
+  let linkSel: LinkSelection = linkLayer.selectAll<SVGLineElement, RenderLink>('line');
+  let nodeSel: NodeSelection = nodeLayer.selectAll<SVGGElement, SimNode>('g');
+
+  function join(nodesToShow: SimNode[], linksToShow: RenderLink[], contextIds: Set<string>) {
+    linkSel = linkLayer
+      .selectAll<SVGLineElement, RenderLink>('line')
+      .data(linksToShow, (d) => d.edge)
+      .join(enterLinks, (u) => u, (x) => x.remove());
+    nodeSel = nodeLayer
+      .selectAll<SVGGElement, SimNode>('g')
+      .data(nodesToShow, (d) => d.id)
+      .join(enterNodes, (u) => u, (x) => x.remove());
+    nodeSel.classed(styles.ctx, (d) => contextIds.has(d.id));
+  }
 
   function draw() {
     linkSel.each(function (d) {
@@ -152,12 +190,12 @@ export function renderGraph(
   function fit() {
     const w = svgEl.clientWidth;
     const h = svgEl.clientHeight;
-    if (!w || !h || nodes.length === 0) return;
+    if (!w || !h || visibleNodes.length === 0) return;
     let x0 = Infinity;
     let y0 = Infinity;
     let x1 = -Infinity;
     let y1 = -Infinity;
-    for (const n of nodes) {
+    for (const n of visibleNodes) {
       const x = n.x ?? 0;
       const y = n.y ?? 0;
       x0 = Math.min(x0, x - n.r);
@@ -175,14 +213,12 @@ export function renderGraph(
     svg.call(zoomBehavior.transform, zoomIdentity.translate(tx, ty).scale(k));
   }
 
-  const simulation = forceSimulation<SimNode, RenderLink>(nodes)
-    .force(
-      'link',
-      forceLink<SimNode, RenderLink>(links)
-        .id((d) => d.id)
-        .distance(40)
-        .strength(0.55),
-    )
+  const linkForce = forceLink<SimNode, RenderLink>(allLinks)
+    .id((d) => d.id)
+    .distance(40)
+    .strength(0.55);
+  const simulation = forceSimulation<SimNode, RenderLink>(allNodes)
+    .force('link', linkForce)
     .force(
       'charge',
       forceManyBody<SimNode>().strength((d) => -(70 + d.r * 9)),
@@ -232,14 +268,11 @@ export function renderGraph(
       d.fx = null;
       d.fy = null;
     });
-  nodeSel.call(dragBehavior);
-  nodeSel.on('click', (event: MouseEvent, d) => {
-    event.stopPropagation();
-    onOpen(d);
-  });
 
-  if (nodes.length > 0) {
-    if (nodes.length <= PRETICK_MAX_NODES) {
+  join(allNodes, allLinks, lastApplied.contextIds);
+
+  if (allNodes.length > 0) {
+    if (allNodes.length <= PRETICK_MAX_NODES) {
       simulation.alpha(1);
       simulation.tick(PRETICKS);
       draw();
@@ -251,6 +284,37 @@ export function renderGraph(
   }
 
   return {
+    update(visible: VisibleSet) {
+      if (destroyed || sameVisibleSet(visible, lastApplied)) return;
+      lastApplied = visible;
+
+      const isVisible = (id: string) => visible.coreIds.has(id) || visible.contextIds.has(id);
+      // Graph order, not set order, so the DOM order is stable across updates.
+      visibleNodes = allNodes.filter((n) => isVisible(n.id));
+      const visibleLinks: RenderLink[] = [];
+      for (const edge of visible.edgeIndexes) {
+        const l = linkByEdge.get(edge);
+        // Self-links have no renderer link; a link with an end outside the
+        // visible nodes would make forceLink throw, so it is skipped too.
+        if (!l || !isVisible(endId(l.source)) || !isVisible(endId(l.target))) continue;
+        visibleLinks.push(l);
+      }
+
+      // Order matters: nodes first (re-indexes them, keeps x/y/vx/vy), then
+      // links (forceLink resolves ends against the current nodes).
+      simulation.nodes(visibleNodes);
+      linkForce.links(visibleLinks);
+      join(visibleNodes, visibleLinks, visible.contextIds);
+
+      if (visibleNodes.length === 0) {
+        fitOnEnd = false;
+        simulation.stop();
+        return;
+      }
+      draw();
+      fitOnEnd = true;
+      simulation.alpha(UPDATE_ALPHA).restart();
+    },
     destroy() {
       destroyed = true;
       pendingReheat.clear();

@@ -42,8 +42,23 @@ describe('prepareSimulation', () => {
     const { nodes, links } = prepareSimulation(graph());
     expect(links).toHaveLength(2);
     expect(nodes.map((n) => n.degree)).toEqual([1, 2, 1]);
-    expect(links[0]).toMatchObject({ source: '1', target: '2', field: 0 });
-    expect(links[1]).toMatchObject({ source: '2', target: '3', field: 0 });
+    expect(links[0]).toMatchObject({ source: '1', target: '2', field: 0, edge: 0 });
+    expect(links[1]).toMatchObject({ source: '2', target: '3', field: 0, edge: 1 });
+  });
+
+  it('keeps the original edge index when a self-link comes first', () => {
+    const { links } = prepareSimulation(
+      graph({
+        edges: [
+          { source: 0, target: 0, field: 0 },
+          { source: 0, target: 1, field: 0 },
+          { source: 1, target: 1, field: 0 },
+          { source: 1, target: 2, field: 0 },
+        ],
+      }),
+    );
+    expect(links.map((l) => l.edge)).toEqual([1, 3]);
+    expect(links[1]).toMatchObject({ source: '2', target: '3', edge: 3 });
   });
 
   it('counts duplicate edges on different fields separately', () => {

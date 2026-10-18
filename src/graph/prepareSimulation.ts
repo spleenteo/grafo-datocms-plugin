@@ -13,6 +13,8 @@ export interface SimNode extends SimulationNodeDatum {
 
 export interface SimLink extends SimulationLinkDatum<SimNode> {
   field: number;
+  /** Original index into `graph.edges` (self-links are skipped, so this is not the position in `links`). */
+  edge: number;
 }
 
 export function nodeRadius(degree: number): number {
@@ -26,16 +28,17 @@ export function prepareSimulation(graph: Graph): {
 } {
   const degrees = new Array<number>(graph.nodes.length).fill(0);
   const links: SimLink[] = [];
-  for (const e of graph.edges) {
-    if (e.source === e.target) continue;
+  graph.edges.forEach((e, edge) => {
+    if (e.source === e.target) return;
     degrees[e.source]++;
     degrees[e.target]++;
     links.push({
       source: graph.nodes[e.source].id,
       target: graph.nodes[e.target].id,
       field: e.field,
+      edge,
     });
-  }
+  });
 
   const nodes: SimNode[] = graph.nodes.map((n, i) => ({
     id: n.id,
