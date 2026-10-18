@@ -1,8 +1,8 @@
 ---
 status: open
 phase: slice
-slice: V3
-step: close
+slice: V4
+step: plan
 work: content-graph-plugin
 stack: generic
 updated: 2026-10-18
@@ -22,7 +22,7 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 
 - [x] V1 — Empty full-page plugin
 - [x] V2 — Graph data from the CMA (spike first)
-- [ ] V3 — Graph view
+- [x] V3 — Graph view
 - [ ] V4 — Filter rail
 - [ ] V5 — Inspector, search, view controls
 - [ ] V6 — Marketplace release
@@ -35,3 +35,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-18 — V1 close — scaffold, README, public repo, tab verified in DatoCMS; gate green — spike CMA loading, then V2 plan — — —
 - 2026-10-18 — spike CMA loading — 3 requests on Gestart (schema 1, records 1, blocks 1), POC edges reconciled (347 = 291 + 56 parent_id) — V2 plan — — —
 - 2026-10-18 — V2 close — data layer + page counts; Gestart 248/19/347, 3 requests; 4 task reviews + final review (4 fixes) — V3 plan — — —
+- 2026-10-18 — V3 close — D3 graph view, click opens record; 3 task reviews + final review (6 fixes) — V4 plan — — —

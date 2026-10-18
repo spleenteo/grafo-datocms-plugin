@@ -109,6 +109,13 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - Keyboard access to nodes (POC `tabindex`/Enter) deferred to V5, with the inspector.
 - No sandbox environment on Gestart: the environment prefix of the record URL is covered by a unit test on `recordEditPath` instead of a manual check.
 
+**V3 — done on 2026-10-18**
+- `src/graph/`: `prepareSimulation` (pure, copies the readonly `Graph`, degree/radius/colour order, id-based link ends), `recordEditPath` (tested env prefix), `renderGraph` (framework-free D3: POC forces, zoom/pan, drag, arrows, fit via `zoom.transform`, status styles, colours from CSS custom properties with a dark override). `src/components/GraphView.tsx` mounts it once per `Graph`; the page is a full-height stage with a counts overlay.
+- Verified on Gestart: renders in about a second, zoom/pan/drag/click OK, back-navigation clean, both themes readable.
+- Final review: the renderer was build-once; joins are now keyed by id and nodes kept in an id map, so V4 adds `update(visible)` instead of re-mounting (V4's first task). Drag uses `event.active` (`=== 1` on the first `drag` event: d3-drag counts the live gesture there) with a `destroyed` guard.
+- Rulings: env prefix unit-tested (no sandbox on Gestart); `update()` API left to V4, where its consumer is.
+- Deferred: labels, hover highlight, keyboard access, refit on iframe resize (V5); centring during the animated layout above 1000 nodes.
+
 ## V4 — Filter rail
 
 **In**
