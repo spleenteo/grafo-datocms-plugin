@@ -9,7 +9,7 @@ interface Props {
   graph: Graph;
   colorIndex: number[];
   filters: Filters;
-  onChange: (filters: Filters) => void;
+  onChange: (update: (prev: Filters) => Filters) => void;
 }
 
 const STATUSES: { status: NodeStatus; label: string }[] = [
@@ -55,7 +55,9 @@ function GroupHeader({
 }
 
 export default function FilterRail({ graph, colorIndex, filters, onChange }: Props) {
-  const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
+  const set = (patch: Partial<Filters>) => onChange((prev) => ({ ...prev, ...patch }));
+  const toggle = (key: 'models' | 'statuses' | 'fields', value: number | NodeStatus) =>
+    onChange((prev) => ({ ...prev, [key]: toggled(prev[key] as ReadonlySet<number | NodeStatus>, value) }));
 
   const modelOrder = useMemo(
     () => graph.models.map((_, i) => i).sort((a, b) => colorIndex[a] - colorIndex[b]),
@@ -93,12 +95,12 @@ export default function FilterRail({ graph, colorIndex, filters, onChange }: Pro
                 role="button"
                 tabIndex={0}
                 aria-pressed={isOn}
-                onClick={() => set({ models: toggled(filters.models, m) })}
+                onClick={() => toggle('models', m)}
                 onDoubleClick={() => set({ models: new Set([m]) })}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    set({ models: toggled(filters.models, m) });
+                    toggle('models', m);
                   }
                 }}
               >
@@ -125,7 +127,7 @@ export default function FilterRail({ graph, colorIndex, filters, onChange }: Pro
               className={`${styles.chip} ${filters.statuses.has(status) ? styles.on : styles.chipOff}`}
               title={`${statusCounts[status]} records`}
               aria-pressed={filters.statuses.has(status)}
-              onClick={() => set({ statuses: toggled(filters.statuses, status) })}
+              onClick={() => toggle('statuses', status)}
             >
               {label}
             </button>
@@ -150,7 +152,7 @@ export default function FilterRail({ graph, colorIndex, filters, onChange }: Pro
                 className={`${styles.chip} ${isOn ? styles.on : styles.chipOff}`}
                 title={`${count} relations`}
                 aria-pressed={isOn}
-                onClick={() => set({ fields: toggled(filters.fields, index) })}
+                onClick={() => toggle('fields', index)}
               >
                 {field.isPseudo ? 'parent (tree)' : field.apiKey}
               </button>
@@ -189,7 +191,7 @@ export default function FilterRail({ graph, colorIndex, filters, onChange }: Pro
         />
       </section>
 
-      <Button buttonType="muted" buttonSize="s" onClick={() => onChange(allFilters(graph))}>
+      <Button buttonType="muted" buttonSize="s" onClick={() => onChange(() => allFilters(graph))}>
         Reset filters
       </Button>
     </aside>

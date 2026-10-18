@@ -103,6 +103,17 @@ describe('filterGraph', () => {
     expect(ids(w.coreIds)).toEqual(['a']);
     expect(ids(w.contextIds)).toEqual(['c']);
   });
+
+  it('hide orphans drops a node whose only link is a self-link', () => {
+    const g: Graph = {
+      ...graph,
+      nodes: [...graph.nodes, node('e', 0)],
+      edges: [...graph.edges, { source: 4, target: 4, field: 0 }],
+    };
+    const f = { ...allFilters(g), hidesOrphans: true };
+    expect(ids(filterGraph(g, f).coreIds)).toEqual(['a', 'b', 'c', 'd']);
+    expect(ids(filterGraph(g, { ...f, hidesOrphans: false }).coreIds)).toContain('e');
+  });
 });
 
 describe('sameVisibleSet', () => {
@@ -111,5 +122,11 @@ describe('sameVisibleSet', () => {
     const b = filterGraph(graph, allFilters(graph));
     expect(sameVisibleSet(a, b)).toBe(true);
     expect(sameVisibleSet(a, filterGraph(graph, with_({ models: new Set([0]) })))).toBe(false);
+  });
+
+  it('is false when only the context ids differ', () => {
+    const a = filterGraph(graph, allFilters(graph));
+    const b = { ...a, contextIds: new Set(['a']) };
+    expect(sameVisibleSet(a, b)).toBe(false);
   });
 });

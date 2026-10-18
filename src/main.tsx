@@ -3,6 +3,7 @@ import { Spinner } from 'datocms-react-ui';
 import { lazy, Suspense } from 'react';
 import { render } from './utils/render';
 import 'datocms-react-ui/styles.css';
+import './graph/modelColors.css';
 
 const LazyGraphPage = lazy(() => import('./entrypoints/GraphPage'));
 

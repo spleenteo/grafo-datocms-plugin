@@ -1,0 +1,11 @@
+:root {
+  --node-s: 62%;
+  --node-l0: 45%;
+  --node-l1: 58%;
+}
+
+:root[data-color-scheme='dark'] {
+  --node-s: 70%;
+  --node-l0: 62%;
+  --node-l1: 74%;
+}

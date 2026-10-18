@@ -294,8 +294,9 @@ export function renderGraph(
       const visibleLinks: RenderLink[] = [];
       for (const edge of visible.edgeIndexes) {
         const l = linkByEdge.get(edge);
-        // Self-links have no renderer link; a link with an end outside the
-        // visible nodes would make forceLink throw, so it is skipped too.
+        // Self-links have no renderer link. A link with a hidden end is
+        // skipped too: its ends are already node objects so forceLink would
+        // not throw, but it would pull on a node outside the simulation.
         if (!l || !isVisible(endId(l.source)) || !isVisible(endId(l.target))) continue;
         visibleLinks.push(l);
       }
