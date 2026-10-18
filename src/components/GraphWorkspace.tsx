@@ -111,7 +111,7 @@ export default function GraphWorkspace({
   let checkedSelectedId = rawSelectedId;
   if (filters !== prevFilters) {
     setPrevFilters(filters);
-    checkedSelectedId = reconcileSelection(rawSelectedId, true, isRemap, filtered);
+    checkedSelectedId = reconcileSelection(rawSelectedId, isRemap, filtered);
     if (checkedSelectedId !== rawSelectedId) setSelectedId(checkedSelectedId);
   }
   // A selection that left the graph (after a reload) counts as none.

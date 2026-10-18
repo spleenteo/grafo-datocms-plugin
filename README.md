@@ -66,7 +66,7 @@ The plugin makes no write calls.
 
 Each listing is repeated per chunk of 200 models, with at least one request per chunk. The count shown in the status bar is API calls, rate-limit retries included.
 
-The first request fetches the schema: `site` with `include=item_types,item_types.fields`. The results are memoised for the page session, keyed by environment, endpoint, effective permissions and excluded models. Reload bypasses the memo. The schema, meaning model and field names, is always downloaded.
+The first request fetches the schema: `site` with `include=item_types,item_types.fields`. The results are memoised for the page session, keyed by environment, endpoint, user, effective permissions and excluded models. Reload bypasses the memo. The schema, meaning model and field names, is always downloaded.
 
 ## Stored state
 
@@ -78,7 +78,7 @@ The editor's filters are saved in `localStorage` under `grafo:filters:v1:<siteId
 ## Limitations
 
 - The whole readable dataset loads when Grafo opens. Projects with tens of thousands of records need many requests. For restricted roles that is one request per 30 records.
-- Rendering is SVG. Above about 1000 visible nodes the layout animates instead of pre-computing, and hover highlighting gets slower.
+- Rendering is SVG. Above about 1000 visible nodes the layout animates instead of pre-computing, which costs more CPU.
 - Localized relation fields count the union of the links across all locales. Titles use the first locale that has a value.
 
 ## License

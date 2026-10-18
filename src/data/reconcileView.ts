@@ -22,11 +22,10 @@ export function reconcileFilters(
  */
 export function reconcileSelection(
   selectedId: string | null,
-  filtersChanged: boolean,
   isRemap: boolean,
   filtered: Pick<VisibleSet, 'coreIds' | 'contextIds'>,
 ): string | null {
-  if (!filtersChanged || isRemap || selectedId === null) return selectedId;
+  if (isRemap || selectedId === null) return selectedId;
   if (filtered.coreIds.has(selectedId) || filtered.contextIds.has(selectedId)) return selectedId;
   return null;
 }

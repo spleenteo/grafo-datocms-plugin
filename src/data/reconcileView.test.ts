@@ -33,17 +33,16 @@ describe('reconcileFilters', () => {
 
 describe('reconcileSelection', () => {
   it('Reload keeps a selection even if outside the filtered set', () => {
-    expect(reconcileSelection('r1', true, true, visible([]))).toBe('r1');
+    expect(reconcileSelection('r1', true, visible([]))).toBe('r1');
   });
   it('user filter change clears a selection not in the filtered set', () => {
-    expect(reconcileSelection('r1', true, false, visible(['r2'], ['r3']))).toBeNull();
+    expect(reconcileSelection('r1', false, visible(['r2'], ['r3']))).toBeNull();
   });
   it('user filter change keeps a selection in core or context', () => {
-    expect(reconcileSelection('r1', true, false, visible(['r1']))).toBe('r1');
-    expect(reconcileSelection('r1', true, false, visible([], ['r1']))).toBe('r1');
+    expect(reconcileSelection('r1', false, visible(['r1']))).toBe('r1');
+    expect(reconcileSelection('r1', false, visible([], ['r1']))).toBe('r1');
   });
-  it('no filter change keeps the selection; none stays none', () => {
-    expect(reconcileSelection('r1', false, false, visible([]))).toBe('r1');
-    expect(reconcileSelection(null, true, false, visible([]))).toBeNull();
+  it('no selection stays none', () => {
+    expect(reconcileSelection(null, false, visible([]))).toBeNull();
   });
 });

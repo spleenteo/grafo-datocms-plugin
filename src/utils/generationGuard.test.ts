@@ -10,10 +10,4 @@ describe('createGenerationGuard', () => {
     expect(guard.isCurrent(a)).toBe(false);
     expect(guard.isCurrent(b)).toBe(true);
   });
-  it('next() without a run of its own invalidates the previous one (cleanup)', () => {
-    const guard = createGenerationGuard();
-    const a = guard.next();
-    guard.next();
-    expect(guard.isCurrent(a)).toBe(false);
-  });
 });

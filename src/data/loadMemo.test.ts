@@ -14,12 +14,28 @@ const deferred = <T>() => {
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('createLoadMemo', () => {
-  it('shares one load per key and skips the loader on a hit', async () => {
+  it('shares one load per key: concurrent normal loads run the loader once', async () => {
     const memo = createLoadMemo<string>();
-    const loader = vi.fn(async () => 'a');
-    expect(await memo.load('k', loader)).toBe('a');
-    expect(await memo.load('k', loader)).toBe('a');
+    const gate = deferred<string>();
+    const loader = vi.fn(() => gate.promise);
+    const p1 = memo.load('k', loader);
+    const p2 = memo.load('k', loader);
+    gate.resolve('a');
+    expect(await p1).toBe('a');
+    expect(await p2).toBe('a');
     expect(loader).toHaveBeenCalledTimes(1);
+  });
+
+  it('a normal load during an in-flight fresh load returns the existing entry', async () => {
+    const memo = createLoadMemo<string>();
+    await memo.load('k', async () => 'old');
+    const gate = deferred<string>();
+    const freshP = memo.load('k', () => gate.promise, true);
+    const loader = vi.fn(async () => 'never');
+    expect(await memo.load('k', loader)).toBe('old');
+    expect(loader).not.toHaveBeenCalled();
+    gate.resolve('new');
+    await freshP;
   });
 
   it('evicts a failed non-fresh load so the next call retries', async () => {

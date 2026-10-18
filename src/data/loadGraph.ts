@@ -31,7 +31,7 @@ const CONCURRENCY = 3;
 const memo = createLoadMemo<LoadGraphResult>();
 
 /**
- * Cache key of one load: same environment, endpoint and effective permissions.
+ * Cache key of one load: same environment, endpoint, user, effective permissions and excluded models.
  * Stable across renders, so it can be an effect dependency.
  */
 export function loadGraphKey(
