@@ -83,9 +83,35 @@
 }
 
 .distanceValue {
-  min-width: 3ch;
+  min-width: 4ch;
   text-align: right;
   color: var(--color--ink);
+}
+
+.autoToggle {
+  padding: 1px var(--spacing-s);
+  border: 1px solid var(--color--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color--ink-subtle);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.autoToggle:hover {
+  background: var(--color--selected--surface);
+}
+
+.autoToggle[aria-pressed='true'] {
+  border-color: var(--color--ink-primary);
+  background: var(--color--selected--surface);
+  color: var(--color--ink-primary);
+}
+
+.autoToggle:focus-visible {
+  outline: 2px solid var(--color--focus--border);
+  outline-offset: 1px;
 }
 
 .zoomStack {

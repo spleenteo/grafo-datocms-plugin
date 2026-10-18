@@ -1,12 +1,13 @@
 import type { RenderPageCtx } from 'datocms-plugin-sdk';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { expandAround } from '../data/expandAround';
-import { filterGraph } from '../data/filterGraph';
+import { filterGraph, type Filters } from '../data/filterGraph';
 import { startingFilters } from '../data/startingFilters';
 import { deserializeFilters, serializeFilters, startingKeyOf } from '../data/storedFilters';
 import { remapFilters } from '../data/remapFilters';
 import { nodeIndexById } from '../data/relationsOf';
 import type { Graph } from '../data/types';
+import { autoDistance } from '../graph/autoDistance';
 import { recordEditPath } from '../graph/recordEditPath';
 import { searchTitles } from '../data/searchTitles';
 import type { LabelMode } from '../graph/renderGraph';
@@ -141,6 +142,62 @@ export default function GraphWorkspace({
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
 
+  // Stage side for the automatic distance, at most once per animation frame.
+  // Measured before paint, and the graph mounts only then, so the first
+  // layout already runs at the automatic distance (1100 if the stage has no size).
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [canvasSide, setCanvasSide] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    let frame: number | null = null;
+    const measure = () => {
+      frame = null;
+      const side = Math.min(stage.clientWidth, stage.clientHeight);
+      setCanvasSide((prev) => (side > 0 ? side : (prev ?? 1100)));
+    };
+    measure();
+    const observer = new ResizeObserver(() => {
+      if (frame === null) frame = requestAnimationFrame(measure);
+    });
+    observer.observe(stage);
+    return () => {
+      observer.disconnect();
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, []);
+  // Auto (default) follows the visible node count and the stage size; the
+  // slider switches to manual. A selection's expansion must not move the
+  // layout under the focus: while something is selected the automatic value
+  // stays at its last unselected one, and recomputes on deselect.
+  const [distanceMode, setDistanceMode] = useState<'auto' | 'manual'>('auto');
+  const [manualDistance, setManualDistance] = useState(1.6);
+  const liveAuto = autoDistance(visibleIds.size, canvasSide ?? 1100);
+  const [heldAuto, setHeldAuto] = useState(liveAuto);
+  if (selectedId === null && heldAuto !== liveAuto) setHeldAuto(liveAuto);
+  const autoValue = selectedId === null ? liveAuto : heldAuto;
+  const distance = distanceMode === 'auto' ? autoValue : manualDistance;
+  const changeDistance = useCallback((d: number) => {
+    setDistanceMode('manual');
+    setManualDistance(d);
+  }, []);
+  const toggleAutoDistance = useCallback(() => {
+    if (distanceMode === 'auto') {
+      // Keeps the current value: nothing moves until the slider does.
+      setManualDistance(autoValue);
+      setDistanceMode('manual');
+    } else {
+      setDistanceMode('auto');
+    }
+  }, [distanceMode, autoValue]);
+
+  // Every filter change (Reset included) centres the resulting view, even
+  // after a user zoom; selection changes keep their own focus behaviour.
+  const changeFilters = useCallback((update: (prev: Filters) => Filters) => {
+    viewRef.current?.reframe();
+    setFilters(update);
+  }, []);
+
   useEffect(() => {
     if (rawSelectedId !== null && selectedId === null) setSelectedId(null);
   }, [rawSelectedId, selectedId]);
@@ -196,7 +253,6 @@ export default function GraphWorkspace({
     () => createCreatorResolver(() => ctxRef.current),
     [],
   );
-  const [distance, setDistance] = useState(1.6);
   const matches = useMemo(
     () => searchTitles(graph, visibleIds, query),
     [graph, visibleIds, query],
@@ -221,25 +277,26 @@ export default function GraphWorkspace({
         graph={graph}
         colorIndex={data.colorIndex}
         filters={filters}
-        onChange={setFilters}
-        onReframe={() => viewRef.current?.reframe()}
+        onChange={changeFilters}
         resetFilters={() => startingFilters(graph, startingKeysRef.current)}
         onHelp={() =>
           void ctxRef.current.openModal({ id: 'help', title: 'Grafo help', width: 'm', initialHeight: 480 })
         }
       />
-      <div className={styles.stage}>
-        <GraphView
-          ref={viewRef}
-          data={data}
-          visible={visible}
-          selectedId={selectedId}
-          labelMode={labelMode}
-          matchIds={matchIds}
-          distance={distance}
-          modelName={modelName}
-          onSelect={selectNode}
-        />
+      <div ref={stageRef} className={styles.stage}>
+        {canvasSide !== null && (
+          <GraphView
+            ref={viewRef}
+            data={data}
+            visible={visible}
+            selectedId={selectedId}
+            labelMode={labelMode}
+            matchIds={matchIds}
+            distance={distance}
+            modelName={modelName}
+            onSelect={selectNode}
+          />
+        )}
         <CanvasControls
           query={query}
           onQueryChange={setQuery}
@@ -248,7 +305,9 @@ export default function GraphWorkspace({
           labelMode={labelMode}
           onLabelModeChange={setLabelMode}
           distance={distance}
-          onDistanceChange={setDistance}
+          onDistanceChange={changeDistance}
+          isAutoDistance={distanceMode === 'auto'}
+          onAutoDistanceToggle={toggleAutoDistance}
           onZoomIn={() => viewRef.current?.zoomBy(1.35)}
           onZoomOut={() => viewRef.current?.zoomBy(1 / 1.35)}
           onFit={() => viewRef.current?.fit()}

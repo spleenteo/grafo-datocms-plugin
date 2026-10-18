@@ -59,6 +59,8 @@ interface Props {
   onLabelModeChange: (mode: LabelMode) => void;
   distance: number;
   onDistanceChange: (distance: number) => void;
+  isAutoDistance: boolean;
+  onAutoDistanceToggle: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFit: () => void;
@@ -82,7 +84,7 @@ function matchLine(query: string, count: number): string | null {
 }
 
 export default function CanvasControls(props: Props) {
-  const { query, matchCount, labelMode, distance, onReload, isReloadDisabled } = props;
+  const { query, matchCount, labelMode, distance, isAutoDistance, onReload, isReloadDisabled } = props;
   const line = matchLine(query, matchCount);
 
   const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -140,9 +142,20 @@ export default function CanvasControls(props: Props) {
           </Button>
         </p>
         <div className={styles.bottomRight}>
-          <label className={`${styles.distance} ${styles.auto}`}>
-            <span>Distance</span>
+          <div className={`${styles.distance} ${styles.auto}`}>
+            <label htmlFor="grafo-distance">Distance</label>
+            <button
+              type="button"
+              className={styles.autoToggle}
+              aria-pressed={isAutoDistance}
+              title="Set the distance from the number of visible records and the canvas size"
+              onClick={props.onAutoDistanceToggle}
+            >
+              Auto
+              {isAutoDistance && <span className={styles.srOnly}> (on)</span>}
+            </button>
             <input
+              id="grafo-distance"
               type="range"
               min={0.4}
               max={3}
@@ -151,8 +164,8 @@ export default function CanvasControls(props: Props) {
               aria-label="Node distance"
               onChange={(e) => props.onDistanceChange(Number(e.target.value))}
             />
-            <span className={styles.distanceValue}>{distance.toFixed(1)}×</span>
-          </label>
+            <span className={styles.distanceValue}>{Number(distance.toFixed(2))}×</span>
+          </div>
           <div className={`${styles.zoomStack} ${styles.auto}`}>
             <button type="button" title="Zoom in" onClick={props.onZoomIn}>
               <PlusIcon />

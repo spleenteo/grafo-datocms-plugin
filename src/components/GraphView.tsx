@@ -75,7 +75,8 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
     const handle = renderGraph(svg, data, {
       initialPositions: seed?.positions,
       initialTransform: seed?.view.transform,
-      initialUserMoved: seed?.view.userMoved,
+      // A remount after a Reload is a view change: it centres, even after a user zoom.
+      initialUserMoved: false,
       modelName,
       onSelect: (id) => onSelectRef.current(id),
       initialVisible: visibleRef.current,
@@ -114,8 +115,16 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
     handleRef.current?.setQuery(matchIds);
   }, [matchIds]);
 
+  // Every distance change centres the view. The workspace freezes the
+  // automatic distance during a selection, so this never fights a focus.
+  const appliedDistanceRef = useRef(distance);
   useEffect(() => {
-    handleRef.current?.setDistance(distance);
+    if (distance === appliedDistanceRef.current) return;
+    appliedDistanceRef.current = distance;
+    const handle = handleRef.current;
+    if (!handle) return;
+    handle.reframe();
+    handle.setDistance(distance);
   }, [distance]);
 
   return <svg ref={svgRef} className={styles.svg} />;

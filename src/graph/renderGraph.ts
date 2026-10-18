@@ -47,7 +47,7 @@ export interface RenderGraphOptions {
   labelMode?: LabelMode;
   distance?: number;
   matchIds?: ReadonlySet<string>;
-  /** Seeded mount (refresh): with positions the mount skips the pre-tick and the initial fit and settles at a low alpha. */
+  /** Seeded mount (refresh): with positions the mount skips the pre-tick and the initial fit and settles at a low alpha, following and fitting at end unless `initialUserMoved`. */
   initialPositions?: ReadonlyMap<string, Point>;
   initialTransform?: ViewTransform;
   initialUserMoved?: boolean;
@@ -93,7 +93,7 @@ export interface RenderGraphHandle {
    * user zoom. When no update follows (same visible set), fits right away (animated).
    */
   reframe(): void;
-  /** Node distance multiplier; reheats at alpha 0.9. No-op when the value does not change. */
+  /** Node distance multiplier; reheats at alpha 0.9 and serves a pending `reframe()`. No-op when the value does not change. */
   setDistance(d: number): void;
   /** x/y of every node known to this mount, visible or not. */
   positions(): Map<string, Point>;
@@ -821,7 +821,8 @@ export function renderGraph(
 
   if (visibleNodes.length > 0) {
     if (initialPositions) {
-      simulation.alpha(UPDATE_ALPHA).restart();
+      // Follows and fits at end unless the seed says the user moved the view.
+      settle(UPDATE_ALPHA);
     } else if (visibleNodes.length <= PRETICK_MAX_NODES) {
       simulation.alpha(1);
       simulation.tick(PRETICKS);
@@ -999,6 +1000,9 @@ export function renderGraph(
       distance = d;
       applyForces();
       if (visibleNodes.length === 0) return;
+      // A pending reframe is served by this settle (follow, fit at end), not by
+      // a separate animated fit fighting the follow.
+      reframePending = false;
       settle(DISTANCE_ALPHA);
     },
     positions() {
