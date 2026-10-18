@@ -1,8 +1,8 @@
 ---
 status: open
 phase: slice
-slice: V2
-step: close
+slice: V3
+step: plan
 work: large-projects
 stack: react
 updated: 2026-10-18
@@ -20,7 +20,7 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 
 - [x] V1 — Canvas at scale: hover intent, constant label size, label budget
 - [x] V1.1 — Zoom strokes and neighbour labels
-- [ ] V2 — Models list: search, sort, show all
+- [x] V2 — Models list: search, sort, show all
 - [ ] V3 — Relation fields per model: "Model › Field" labels, scoped to visible models, search
 - [ ] V4 — Exploration mode for large projects (to shape with the owner)
 
@@ -32,3 +32,4 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 - 2026-10-18 — V1 close — owner checked on Acacia; two browser-only crashes fixed — V2 plan — — —
 - 2026-10-18 — V1.1 execute+close — strokes/arrows at screen size, neighbour label cap; harness checked — owner check, then V2 — — —
 - 2026-10-18 — V2 execute — search, Count/Name sort, Show all; controller reviewed the diff — owner check — — —
+- 2026-10-18 — V2 close — owner checked; column-header sort, enabled models stay visible — V3 plan — — —

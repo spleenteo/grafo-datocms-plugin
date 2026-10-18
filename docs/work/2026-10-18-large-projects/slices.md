@@ -90,3 +90,9 @@ Open questions for the owner before planning:
 - Strokes, dash patterns and the two arrow markers divide by `--label-k`; line-end gaps too, redrawn at zoom end (otherwise arrow tips drift off the node after zooming a settled graph).
 - Neighbour labels: focus + up to 20 neighbours, the highest-degree in view when there are more; dimming still covers every neighbour.
 - Harness checked: Cosmea shows ~20 neighbour labels; at 6× links are hairlines and arrows small.
+
+### V2 — done on 2026-10-18
+
+- `src/data/modelList.ts`: sort name without leading emoji/symbols, accent-insensitive search on name and api key, deterministic order.
+- Rail: search field, table-like "Model" / "Records" headers that sort (choice in `localStorage` `grafo:modelSort:v1`), first 10 rows plus every enabled model, "Show all (N)" only when more than 3 would stay hidden.
+- Owner change after the first check: the ButtonGroup was too big (now column headers), and enabled models must never hide behind the collapse.
