@@ -1,7 +1,7 @@
 import { Button, ButtonGroup, ButtonGroupButton, SwitchField, TextInput } from 'datocms-react-ui';
 import { memo, useMemo, useState, type KeyboardEvent } from 'react';
-import { orderModels, type ModelSort } from '../data/modelList';
-import { fieldLabel } from '../data/types';
+import { normalizeForSearch, orderModels, type ModelSort } from '../data/modelList';
+import { fieldLabel, fieldTitle } from '../data/types';
 import { allFilters, type Filters } from '../data/filterGraph';
 import type { Graph, NodeStatus } from '../data/types';
 import { NODE_STATUSES } from '../data/types';
@@ -21,6 +21,7 @@ interface Props {
 // Rows shown before "Show all"; a list only a few rows longer is shown whole.
 const MODEL_ROWS = 10;
 const MODEL_ROWS_SLACK = 3;
+const FIELD_SEARCH_MIN = 10;
 const SORT_KEY = 'grafo:modelSort:v1';
 
 function readSort(): ModelSort {
@@ -47,14 +48,29 @@ function GroupHeader({
   title,
   onAll,
   onNone,
+  isCollapsed,
+  onToggleCollapse,
 }: {
   title: string;
   onAll: () => void;
   onNone: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   return (
     <div className={styles.header}>
-      <span>{title}</span>
+      {onToggleCollapse ? (
+        <button
+          type="button"
+          className={styles.collapse}
+          aria-expanded={!isCollapsed}
+          onClick={onToggleCollapse}
+        >
+          <span aria-hidden="true">{isCollapsed ? '▸' : '▾'}</span> {title}
+        </button>
+      ) : (
+        <span>{title}</span>
+      )}
       <span className={styles.headerActions}>
         <Button buttonType="muted" buttonSize="xxs" onClick={onAll}>
           All
@@ -136,14 +152,47 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
     for (const n of graph.nodes) counts[n.status] += 1;
     return counts;
   }, [graph]);
-  const fieldOrder = useMemo(() => {
+  const [fieldQuery, setFieldQuery] = useState('');
+  const [fieldsCollapsed, setFieldsCollapsed] = useState(false);
+  const fieldCounts = useMemo(() => {
     const counts = new Array<number>(graph.fields.length).fill(0);
     for (const e of graph.edges) if (e.source !== e.target) counts[e.field] += 1;
-    return graph.fields
-      .map((_, i) => i)
-      .sort((a, b) => counts[b] - counts[a] || graph.fields[a].apiKey.localeCompare(graph.fields[b].apiKey))
-      .map((i) => ({ index: i, count: counts[i] }));
+    return counts;
   }, [graph]);
+  // Fields of the enabled models, grouped by model in the models list's order.
+  const fieldGroups = useMemo(() => {
+    const byModel = new Map<number, number[]>();
+    graph.fields.forEach((f, i) => {
+      if (!filters.models.has(f.model)) return;
+      byModel.set(f.model, [...(byModel.get(f.model) ?? []), i]);
+    });
+    const byRelations = (a: number, b: number) =>
+      fieldCounts[b] - fieldCounts[a] ||
+      graph.fields[a].label.localeCompare(graph.fields[b].label);
+    return orderModels(graph.models, sort, '')
+      .filter((m) => byModel.has(m))
+      .map((model) => ({ model, fields: byModel.get(model)!.sort(byRelations) }));
+  }, [graph, filters.models, sort, fieldCounts]);
+  const hasFieldSearch = fieldGroups.reduce((n, g) => n + g.fields.length, 0) > FIELD_SEARCH_MIN;
+  const listedGroups = useMemo(() => {
+    const needle = normalizeForSearch(hasFieldSearch ? fieldQuery.trim() : '');
+    if (!needle) return fieldGroups;
+    return fieldGroups
+      .map(({ model, fields }) => ({
+        model,
+        fields: fields.filter((i) =>
+          [graph.fields[i].label, graph.fields[i].apiKey, graph.models[model].name].some((text) =>
+            normalizeForSearch(text).includes(needle),
+          ),
+        ),
+      }))
+      .filter((g) => g.fields.length > 0);
+  }, [graph, fieldGroups, fieldQuery, hasFieldSearch]);
+  const listedFields = listedGroups.flatMap((g) => g.fields);
+  const onFieldSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    event.stopPropagation();
+    if (event.key === 'Escape') setFieldQuery('');
+  };
 
   return (
     <aside className={styles.rail}>
@@ -231,27 +280,61 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
       <section className={styles.section}>
         <GroupHeader
           title="Relation fields"
-          onAll={() => set({ fields: allFilters(graph).fields })}
-          onNone={() => set({ fields: new Set() })}
+          isCollapsed={fieldsCollapsed}
+          onToggleCollapse={() => setFieldsCollapsed((c) => !c)}
+          onAll={() =>
+            set({ fields: new Set([...filters.fields, ...listedFields]) })
+          }
+          onNone={() => {
+            const listed = new Set(listedFields);
+            set({ fields: new Set([...filters.fields].filter((i) => !listed.has(i))) });
+          }}
         />
-        <div className={styles.chips}>
-          {fieldOrder.map(({ index, count }) => {
-            const field = graph.fields[index];
-            const isOn = filters.fields.has(index);
-            return (
-              <button
-                key={index}
-                type="button"
-                className={`${styles.chip} ${isOn ? styles.on : styles.chipOff}`}
-                title={`${count} relations`}
-                aria-pressed={isOn}
-                onClick={() => toggleIndex('fields', index)}
-              >
-                {fieldLabel(field)}
-              </button>
-            );
-          })}
-        </div>
+        {!fieldsCollapsed && hasFieldSearch && (
+          <TextInput
+            id="grafo-field-search"
+            name="grafo-field-search"
+            placeholder="Search fields"
+            aria-label="Search fields"
+            value={fieldQuery}
+            onChange={setFieldQuery}
+            onKeyDown={onFieldSearchKeyDown}
+          />
+        )}
+        {!fieldsCollapsed && listedGroups.length === 0 && (
+          <p className={styles.empty}>
+            {fieldGroups.length === 0
+              ? 'No relation fields for the selected models'
+              : 'No fields match'}
+          </p>
+        )}
+        {!fieldsCollapsed &&
+          listedGroups.map(({ model, fields }) => (
+            <div key={model} className={styles.fieldGroup}>
+              <div className={styles.groupLabel}>
+                <span className={styles.dot} style={{ background: modelColor(colorIndex[model]) }} />
+                <span className={styles.modelName}>{graph.models[model].name}</span>
+              </div>
+              <div className={styles.chips}>
+                {fields.map((index) => {
+                  const field = graph.fields[index];
+                  const isOn = filters.fields.has(index);
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      className={`${styles.chip} ${isOn ? styles.on : styles.chipOff}`}
+                      title={`${fieldTitle(field, graph)} · ${field.apiKey} · ${fieldCounts[index]} relations`}
+                      aria-pressed={isOn}
+                      onClick={() => toggleIndex('fields', index)}
+                    >
+                      {fieldLabel(field)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
       </section>
 
       <section className={styles.section}>

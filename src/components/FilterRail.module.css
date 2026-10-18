@@ -137,3 +137,37 @@
 .columnActive {
   color: var(--color--ink);
 }
+
+.collapse {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.collapse:hover {
+  color: var(--color--ink);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.groupLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color--ink-subtle);
+}
+
+.groupLabel .dot {
+  width: 8px;
+  height: 8px;
+}

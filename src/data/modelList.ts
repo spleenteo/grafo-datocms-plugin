@@ -2,7 +2,8 @@ export type ModelSort = 'count' | 'name';
 
 type Listed = { name: string; apiKey: string };
 
-const stripMarks = (text: string): string =>
+/** Lowercased, accents removed: the form both sides of a search are compared in. */
+export const normalizeForSearch = (text: string): string =>
   text.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase();
 
 /** Name without its leading emoji, symbols and spaces, lowercased: what the list sorts and searches on. */
@@ -12,11 +13,11 @@ export function modelSortName(name: string): string {
 
 /** Whether the model's name or api key contains the query, ignoring case and accents. */
 export function matchesModel(model: Listed, query: string): boolean {
-  const needle = stripMarks(query.trim());
+  const needle = normalizeForSearch(query.trim());
   if (!needle) return true;
   return (
-    stripMarks(modelSortName(model.name)).includes(needle) ||
-    stripMarks(model.apiKey).includes(needle)
+    normalizeForSearch(modelSortName(model.name)).includes(needle) ||
+    normalizeForSearch(model.apiKey).includes(needle)
   );
 }
 

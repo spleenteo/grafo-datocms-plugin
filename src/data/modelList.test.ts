@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchesModel, modelSortName, orderModels } from './modelList';
+import { matchesModel, modelSortName, normalizeForSearch, orderModels } from './modelList';
 
 const model = (name: string, apiKey: string, count: number) => ({ name, apiKey, count });
 const models = [
@@ -37,5 +37,11 @@ describe('matchesModel', () => {
   it('matches the api key', () => {
     expect(matchesModel(models[2], 'cafe_p')).toBe(true);
     expect(orderModels(models, 'count', 'gal')).toEqual([3]);
+  });
+});
+
+describe('normalizeForSearch', () => {
+  it('lowercases and removes accents', () => {
+    expect(normalizeForSearch('Café ÀB')).toBe('cafe ab');
   });
 });
