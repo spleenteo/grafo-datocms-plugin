@@ -110,6 +110,11 @@ function SortHeader({
   );
 }
 
+// Up to two model names, then a count of the rest; the tooltip lists them all.
+function targetHint(names: readonly string[]): string {
+  return names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+}
+
 function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp }: Props) {
   const set = (patch: Partial<Filters>) => onChange((prev) => ({ ...prev, ...patch }));
   const toggleIndex = (key: 'models' | 'fields', value: number) =>
@@ -198,9 +203,13 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
       .filter((g) => g.fields.length > 0);
   }, [graph, fieldGroups, fieldQuery, hasFieldSearch]);
   const listedFields = listedGroups.flatMap((g) => g.fields);
-  // Target model names without their leading emoji, as the hint is small.
-  const targetNames = (targets: ReadonlySet<number>) =>
-    [...targets].map((m) => withoutLeadingSymbols(graph.models[m].name)).sort();
+  // Target model names without their leading emoji, as the hint is small. A
+  // field of an outside model only matters for the selected models it links to.
+  const targetNames = (targets: ReadonlySet<number>, isOutside: boolean) =>
+    [...targets]
+      .filter((m) => !isOutside || filters.models.has(m))
+      .map((m) => withoutLeadingSymbols(graph.models[m].name))
+      .sort();
   const onFieldSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation();
     if (event.key === 'Escape') setFieldQuery('');
@@ -324,7 +333,7 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
           listedGroups.map(({ model, isOutside, fields }, i) => (
             <div key={model} className={styles.fieldGroup}>
               {isOutside && !listedGroups[i - 1]?.isOutside && (
-                <p className={styles.outsideLabel}>Outside selection</p>
+                <p className={styles.outsideLabel}>Linking into the selection</p>
               )}
               <div className={`${styles.groupLabel} ${isOutside ? styles.groupOutside : ''}`}>
                 <span className={styles.dot} style={{ background: modelColor(colorIndex[model]) }} />
@@ -334,7 +343,7 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
                 {fields.map((index) => {
                   const field = graph.fields[index];
                   const isOn = filters.fields.has(index);
-                  const targets = targetNames(fieldTargets[index]);
+                  const targets = targetNames(fieldTargets[index], isOutside);
                   return (
                     <button
                       key={index}
@@ -347,7 +356,7 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
                       {fieldLabel(field)}
                       <span className={styles.chipTarget}>
                         {' → '}
-                        {targets.length === 1 ? targets[0] : `${targets.length} models`}
+                        {targetHint(targets)}
                       </span>
                     </button>
                   );
