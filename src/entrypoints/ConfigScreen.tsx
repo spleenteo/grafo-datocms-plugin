@@ -43,6 +43,9 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
         excludedModelApiKeys: excluded,
       });
       await ctx.notice('Settings saved.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await ctx.alert(`Settings could not be saved: ${message}`);
     } finally {
       setSaving(false);
     }

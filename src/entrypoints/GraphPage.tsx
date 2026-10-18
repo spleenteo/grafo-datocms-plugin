@@ -1,18 +1,18 @@
-import type { RenderPageCtx } from "datocms-plugin-sdk";
-import { Canvas, Spinner } from "datocms-react-ui";
-import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import GraphWorkspace from "../components/GraphWorkspace";
-import { loadGraph, loadGraphKey } from "../data/loadGraph";
-import { readPluginSettings } from "../data/pluginSettings";
-import type { Graph } from "../data/types";
-import styles from "./GraphPage.module.css";
+import type { RenderPageCtx } from 'datocms-plugin-sdk';
+import { Canvas, Spinner } from 'datocms-react-ui';
+import type { ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import GraphWorkspace from '../components/GraphWorkspace';
+import { loadGraph, loadGraphKey } from '../data/loadGraph';
+import { readPluginSettings } from '../data/pluginSettings';
+import type { Graph } from '../data/types';
+import styles from './GraphPage.module.css';
 
 type State =
-  | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
   | {
-      status: "done";
+      status: 'done';
       /** Key of the load that produced the graph: the workspace re-mounts when it changes. */
       loadKey: string;
       graph: Graph;
@@ -32,18 +32,12 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   const settings = readPluginSettings(ctx.plugin.attributes.parameters);
   const excludedModelApiKeys = settings.excludedModelApiKeys;
   const excludedKey = JSON.stringify(excludedModelApiKeys);
-  const [state, setState] = useState<State>({ status: "loading" });
+  const [state, setState] = useState<State>({ status: 'loading' });
 
   // A new ctx brings a new permissions object with the same content: the effect
   // depends on its string key, and reads the object through a ref.
   const loadKey = useMemo(
-    () =>
-      loadGraphKey(
-        environment,
-        baseUrl,
-        permissions,
-        JSON.parse(excludedKey) as string[],
-      ),
+    () => loadGraphKey(environment, baseUrl, permissions, JSON.parse(excludedKey) as string[]),
     [environment, baseUrl, permissions, excludedKey],
   );
   const permissionsRef = useRef(permissions);
@@ -61,7 +55,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     generationRef.current += 1;
     const generation = generationRef.current;
     const isCurrent = () => generationRef.current === generation;
-    setState({ status: "loading" });
+    setState({ status: 'loading' });
     loadGraph({
       apiToken,
       environment,
@@ -72,7 +66,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
       .then(({ graph, requestCount }) => {
         if (isCurrent()) {
           setState({
-            status: "done",
+            status: 'done',
             loadKey,
             graph,
             requestCount,
@@ -82,8 +76,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
         }
       })
       .catch((error: unknown) => {
-        if (isCurrent())
-          setState({ status: "error", message: errorMessage(error) });
+        if (isCurrent()) setState({ status: 'error', message: errorMessage(error) });
       });
     return () => {
       // Invalidates this load (and any refresh started from it).
@@ -103,11 +96,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     generationRef.current += 1;
     const generation = generationRef.current;
     const isCurrent = () => generationRef.current === generation;
-    setState((s) =>
-      s.status === "done"
-        ? { ...s, isRefreshing: true, refreshError: null }
-        : s,
-    );
+    setState((s) => (s.status === 'done' ? { ...s, isRefreshing: true, refreshError: null } : s));
     loadGraph({
       apiToken: token,
       environment: env,
@@ -119,7 +108,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
       .then(({ graph, requestCount }) => {
         if (isCurrent()) {
           setState({
-            status: "done",
+            status: 'done',
             loadKey: key,
             graph,
             requestCount,
@@ -131,14 +120,14 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
       .catch((error: unknown) => {
         if (!isCurrent()) return;
         setState((s) =>
-          s.status === "done"
+          s.status === 'done'
             ? { ...s, isRefreshing: false, refreshError: errorMessage(error) }
             : s,
         );
       });
   }, []);
 
-  const graph = state.status === "done" ? state.graph : null;
+  const graph = state.status === 'done' ? state.graph : null;
 
   let body: ReactNode;
   if (!apiToken) {
@@ -147,9 +136,9 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
         Grant the currentUserAccessToken permission in the plugin settings.
       </p>
     );
-  } else if (state.status === "loading") {
+  } else if (state.status === 'loading') {
     body = <Spinner placement="centered" />;
-  } else if (state.status === "error") {
+  } else if (state.status === 'error') {
     body = <p className={styles.error}>{state.message}</p>;
   } else if (graph) {
     return (

@@ -1,8 +1,8 @@
-import { buildClient } from "@datocms/cma-client-browser";
-import { buildGraph } from "./buildGraph";
-import { parseSchema } from "./parseSchema";
-import { readAccess } from "./readAccess";
-import type { Graph, RawItem, RawRecord, Schema } from "./types";
+import { buildClient } from '@datocms/cma-client-browser';
+import { buildGraph } from './buildGraph';
+import { parseSchema } from './parseSchema';
+import type { Graph, RawItem, RawRecord } from './types';
+import { visibleModelPlan } from './visibleModelPlan';
 
 /** The two arrays of `ctx.currentRole.meta.final_permissions` that decide read access. */
 export type RolePermissions = {
@@ -44,7 +44,7 @@ export function loadGraphKey(
   permissions: RolePermissions,
   excludedModelApiKeys: readonly string[],
 ): string {
-  return `${environment}\n${baseUrl ?? ""}\n${JSON.stringify({
+  return `${environment}\n${baseUrl ?? ''}\n${JSON.stringify({
     positive: permissions.positive_item_type_permissions,
     negative: permissions.negative_item_type_permissions,
     excluded: [...excludedModelApiKeys].sort(),
@@ -57,19 +57,7 @@ function chunk<T>(list: T[], size: number): T[][] {
   return out;
 }
 
-/** Drops the models the role can't read; block models stay. */
-function readableSchema(schema: Schema, readableModelIds: Set<string>): Schema {
-  const itemTypes = new Map(
-    [...schema.itemTypes].filter(
-      ([id, t]) => t.isBlock || readableModelIds.has(id),
-    ),
-  );
-  return { locales: schema.locales, itemTypes };
-}
-
-async function loadGraphUncached(
-  options: LoadGraphOptions,
-): Promise<LoadGraphResult> {
+async function loadGraphUncached(options: LoadGraphOptions): Promise<LoadGraphResult> {
   let count = 0;
   const fetchFn: typeof fetch = (...args) => {
     count++;
@@ -82,36 +70,22 @@ async function loadGraphUncached(
     fetchFn,
   });
 
-  const site = await client.site.rawFind({
-    include: "item_types,item_types.fields",
-  });
+  const site = await client.site.rawFind({ include: 'item_types,item_types.fields' });
   const fullSchema = parseSchema(site);
 
-  const allModelIds: string[] = [];
-  const blockIds: string[] = [];
-  for (const t of fullSchema.itemTypes.values())
-    (t.isBlock ? blockIds : allModelIds).push(t.id);
-
-  const access = readAccess(
+  const blockIds = [...fullSchema.itemTypes.values()].filter((t) => t.isBlock).map((t) => t.id);
+  const { modelIds, schema, isFullRead } = visibleModelPlan(
+    fullSchema,
     options.permissions,
     options.environment,
-    allModelIds,
+    options.excludedModelApiKeys,
   );
-  // Excluded models go after readAccess, which must see every model.
-  const excluded = new Set(options.excludedModelApiKeys);
-  const loadedModelIds = new Set(
-    [...access.readableModelIds].filter(
-      (id) => !excluded.has(fullSchema.itemTypes.get(id)?.apiKey ?? ""),
-    ),
-  );
-  const schema = readableSchema(fullSchema, loadedModelIds);
-  const modelIds = allModelIds.filter((id) => loadedModelIds.has(id));
 
   async function listFlat(typeIds: string[]): Promise<RawItem[]> {
     const items: RawItem[] = [];
     for (const ids of chunk(typeIds, TYPE_CHUNK_SIZE)) {
       for await (const item of client.items.listPagedIterator(
-        { filter: { type: ids.join(",") }, version: "current" },
+        { filter: { type: ids.join(',') }, version: 'current' },
         { perPage: PER_PAGE, concurrency: CONCURRENCY },
       )) {
         items.push(item);
@@ -126,7 +100,7 @@ async function loadGraphUncached(
     const items: RawRecord[] = [];
     for (const ids of chunk(typeIds, TYPE_CHUNK_SIZE)) {
       for await (const item of client.items.listPagedIterator(
-        { filter: { type: ids.join(",") }, version: "current", nested: true },
+        { filter: { type: ids.join(',') }, version: 'current', nested: true },
         { perPage: NESTED_PER_PAGE, concurrency: CONCURRENCY },
       )) {
         items.push(item);
@@ -138,11 +112,8 @@ async function loadGraphUncached(
   let graph: Graph;
   if (modelIds.length === 0) {
     graph = buildGraph(schema, [], []);
-  } else if (access.isFullRead) {
-    const [items, blocks] = await Promise.all([
-      listFlat(modelIds),
-      listFlat(blockIds),
-    ]);
+  } else if (isFullRead) {
+    const [items, blocks] = await Promise.all([listFlat(modelIds), listFlat(blockIds)]);
     graph = buildGraph(schema, items, blocks);
   } else {
     graph = buildGraph(schema, await listNested(modelIds), []);
@@ -164,8 +135,7 @@ export function loadGraph(options: LoadGraphOptions): Promise<LoadGraphResult> {
     const promise = loadGraphUncached(options);
     promise.then(
       (result) => {
-        if (freshTokens.get(key) === token)
-          memo.set(key, Promise.resolve(result));
+        if (freshTokens.get(key) === token) memo.set(key, Promise.resolve(result));
       },
       () => {},
     );
