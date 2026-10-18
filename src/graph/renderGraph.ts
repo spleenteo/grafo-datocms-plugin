@@ -434,8 +434,6 @@ export function renderGraph(
       })
       .on('mouseenter', (_event: MouseEvent, d) => scheduleHover(d.id))
       .on('mouseleave', () => scheduleHover(null))
-      // A press is a click or a drag, not a dwell.
-      .on('mousedown', () => clearHoverTimer())
       .on('focus', function (_event: FocusEvent, d) {
         // A click also focuses the node; only keyboard focus counts as hover.
         if (!this.matches(':focus-visible')) return;
@@ -531,7 +529,7 @@ export function renderGraph(
     const sel = selectedId !== null && visibleIds.has(selectedId) ? selectedId : null;
     const hov = hoveredId !== null && visibleIds.has(hoveredId) ? hoveredId : null;
     const dims = visibleNodes.length <= HOVER_FOCUS_MAX_NODES || hoverFromKeyboard;
-    return { sel, focus: dims ? (hov ?? sel) : sel, hover: dims ? null : hov };
+    return { sel, focus: dims ? (hov ?? sel) : sel, hover: dims || hov === sel ? null : hov };
   }
 
   // The `hovered` class and label of the label-only hover, diffed like the focus.
@@ -781,8 +779,11 @@ export function renderGraph(
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);
   // The release can land outside the svg, hence window.
+  // A press is a click or a drag, not a dwell; d3-drag swallows the node's
+  // mousedown, so the cancel lives here.
   const onPointerDown = () => {
     pointerDown = true;
+    clearHoverTimer();
   };
   const onPointerUp = () => {
     pointerDown = false;
@@ -1064,7 +1065,10 @@ export function renderGraph(
       applyForces();
       join(visibleNodes, visibleLinks, visible.contextIds);
       // A removed node never fires mouseleave.
-      if (hoveredId !== null && !visibleIds.has(hoveredId)) hoveredId = null;
+      if (hoveredId !== null && !visibleIds.has(hoveredId)) {
+        hoveredId = null;
+        hoverFromKeyboard = false;
+      }
       if (hoverTarget !== null && !visibleIds.has(hoverTarget)) clearHoverTimer();
       if (focusTarget !== null && !visibleIds.has(focusTarget)) focusTarget = null;
       paintAll();
@@ -1253,7 +1257,6 @@ export function renderGraph(
         .on('keydown', null)
         .on('mouseenter', null)
         .on('mouseleave', null)
-        .on('mousedown', null)
         .on('focus', null)
         .on('blur', null);
       svg.on('.zoom', null).on('click', null).on('pointerdown', null);
