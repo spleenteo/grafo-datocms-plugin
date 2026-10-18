@@ -373,7 +373,7 @@ export function renderGraph(
   const defs = svg.append('defs');
   // userSpaceOnUse: the size is in px, not multiplied by the stroke width.
   function appendMarker(id: string, className: string, size: number) {
-    defs
+    const marker = defs
       .append('marker')
       .attr('id', id)
       .attr('class', className)
@@ -383,12 +383,13 @@ export function renderGraph(
       .attr('refY', 5)
       .attr('markerWidth', size)
       .attr('markerHeight', size)
-      .attr('orient', 'auto')
-      .append('path')
-      .attr('d', 'M0 0 L10 5 L0 10 z');
+      .attr('orient', 'auto');
+    marker.append('path').attr('d', 'M0 0 L10 5 L0 10 z');
+    return marker;
   }
-  appendMarker(`${markerPrefix}-ar`, styles.arrow, ARROW_SIZE);
-  appendMarker(`${markerPrefix}-ar-hi`, styles.arrowHi, ARROW_SIZE_HI);
+  // Resized with `--label-k` so the arrows keep their screen size above k = 1.
+  const arrowMarker = appendMarker(`${markerPrefix}-ar`, styles.arrow, ARROW_SIZE);
+  const arrowHiMarker = appendMarker(`${markerPrefix}-ar-hi`, styles.arrowHi, ARROW_SIZE_HI);
 
   const viewport = svg.append('g');
   const linkLayer = viewport.append('g');
@@ -802,8 +803,9 @@ export function renderGraph(
       const dx = tx - sx;
       const dy = ty - sy;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const startOff = s.r + 1;
-      const endOff = t.r + (t.status === 'updated' ? 5 : 3) + ARROW_OVERSHOOT;
+      // Gaps and arrow overshoot are screen pixels: graph units shrink with the zoom.
+      const startOff = s.r + 1 / labelK;
+      const endOff = t.r + ((t.status === 'updated' ? 5 : 3) + ARROW_OVERSHOOT) / labelK;
       this.setAttribute('x1', String(sx + (dx / len) * startOff));
       this.setAttribute('y1', String(sy + (dy / len) * startOff));
       this.setAttribute('x2', String(tx - (dx / len) * endOff));
@@ -823,16 +825,25 @@ export function renderGraph(
   // behaviour: the mount's initial transform fires a zoom `end` that reads it.
   let follow = false;
 
+  // The variable that labels and strokes read, plus the two arrow sizes: the
+  // only per-zoom writes. draw() reads labelK for the line ends, so between
+  // ticks after a zoom they are stale by a fraction of a pixel.
+  function setLabelK(next: number) {
+    labelK = next;
+    svgEl.style.setProperty('--label-k', String(next));
+    arrowMarker.attr('markerWidth', ARROW_SIZE / next).attr('markerHeight', ARROW_SIZE / next);
+    arrowHiMarker
+      .attr('markerWidth', ARROW_SIZE_HI / next)
+      .attr('markerHeight', ARROW_SIZE_HI / next);
+  }
+
   const zoomBehavior = zoom<SVGSVGElement, unknown>()
     .scaleExtent([0.1, 6])
     .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
       viewport.attr('transform', event.transform.toString());
       // Labels keep their screen size above k = 1; one root variable, no node writes.
       const nextK = Math.max(1, event.transform.k);
-      if (Math.abs(nextK / labelK - 1) > LABEL_K_EPSILON) {
-        labelK = nextK;
-        svgEl.style.setProperty('--label-k', String(nextK));
-      }
+      if (Math.abs(nextK / labelK - 1) > LABEL_K_EPSILON) setLabelK(nextK);
       if (event.sourceEvent) {
         userMoved = true;
         clearFocusTarget();
@@ -843,8 +854,7 @@ export function renderGraph(
     .on('end', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
       if (destroyed) return;
       // At rest the exact value, not the last one past the epsilon.
-      labelK = Math.max(1, event.transform.k);
-      svgEl.style.setProperty('--label-k', String(labelK));
+      setLabelK(Math.max(1, event.transform.k));
       if (!follow) refreshBudget();
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);

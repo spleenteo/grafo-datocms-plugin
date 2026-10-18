@@ -20,7 +20,7 @@
 .link {
   fill: none;
   stroke: var(--color--ink-muted);
-  stroke-width: 0.75;
+  stroke-width: calc(0.75px / var(--label-k, 1));
   stroke-opacity: 0.35;
 }
 
@@ -31,26 +31,26 @@
 .dot {
   fill: var(--c);
   stroke: var(--color--surface);
-  stroke-width: 1.5;
+  stroke-width: calc(1.5px / var(--label-k, 1));
 }
 
 .ring {
   fill: none;
   stroke: var(--c);
-  stroke-width: 1.5;
+  stroke-width: calc(1.5px / var(--label-k, 1));
 }
 
 .node[data-status='draft'] .dot {
   fill: var(--color--surface);
   stroke: var(--c);
-  stroke-width: 2;
-  stroke-dasharray: 3 2;
+  stroke-width: calc(2px / var(--label-k, 1));
+  stroke-dasharray: calc(3px / var(--label-k, 1)) calc(2px / var(--label-k, 1));
 }
 
 .node.ctx:not([data-status='draft']) .dot {
   fill-opacity: 0.45;
   stroke: var(--c);
-  stroke-width: 1.5;
+  stroke-width: calc(1.5px / var(--label-k, 1));
 }
 
 .arrowHi {
@@ -60,7 +60,7 @@
 
 .link.hi {
   stroke: var(--color--ink);
-  stroke-width: 1.25;
+  stroke-width: calc(1.25px / var(--label-k, 1));
   stroke-opacity: 0.9;
 }
 
@@ -87,13 +87,13 @@
 
 .node:focus-visible .dot {
   stroke: var(--color--focus--border);
-  stroke-width: 2.5;
+  stroke-width: calc(2.5px / var(--label-k, 1));
 }
 
 /* Wins over the ctx and draft dot rules; a focused node is never dimmed. */
 .node.node:focus-visible[data-status] .dot {
   stroke: var(--color--focus--border);
-  stroke-width: 2.5;
+  stroke-width: calc(2.5px / var(--label-k, 1));
   stroke-dasharray: none;
 }
 
