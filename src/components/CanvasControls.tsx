@@ -1,5 +1,5 @@
 import { Button, ButtonGroup, ButtonGroupButton, TextInput } from 'datocms-react-ui';
-import type { KeyboardEvent, ReactNode } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import type { LabelMode } from '../graph/renderGraph';
 import styles from './CanvasControls.module.css';
 
@@ -55,6 +55,11 @@ interface Props {
   onQueryChange: (query: string) => void;
   onSearchEnter: () => void;
   matchCount: number;
+  /** Matches to pick from, shown under the search when it reaches every record; null: none. */
+  results: { id: string; title: string; modelName: string }[] | null;
+  onPickResult: (id: string) => void;
+  /** Focus the search field once, when the controls mount. */
+  focusSearchOnMount: boolean;
   labelMode: LabelMode;
   onLabelModeChange: (mode: LabelMode) => void;
   distance: number;
@@ -87,6 +92,13 @@ function matchLine(query: string, count: number): string | null {
 export default function CanvasControls(props: Props) {
   const { query, matchCount, labelMode, distance, isAutoDistance, onReload, isReloadDisabled } = props;
   const line = matchLine(query, matchCount);
+  // TextInput types its ref as never null; it is null until the input mounts.
+  const inputRef = useRef<HTMLInputElement>(null!);
+  const shouldFocusRef = useRef(props.focusSearchOnMount);
+  useEffect(() => {
+    if (shouldFocusRef.current) inputRef.current.focus();
+  }, []);
+  const results = query.trim() ? props.results : null;
 
   const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // Keep node keyboard handlers and the workspace Escape out of the input.
@@ -111,10 +123,26 @@ export default function CanvasControls(props: Props) {
             value={query}
             onChange={props.onQueryChange}
             onKeyDown={onSearchKeyDown}
+            inputRef={inputRef}
           />
           <p className={styles.matchLine} role="status">
             {line ?? ''}
           </p>
+          {results !== null && results.length > 0 && (
+            <ul className={styles.results} aria-label="Matching records">
+              {results.map((r) => (
+                <li key={r.id}>
+                  <button type="button" onClick={() => props.onPickResult(r.id)}>
+                    <span className={styles.resultTitle}>{r.title}</span>
+                    <span className={styles.resultModel}>{r.modelName}</span>
+                  </button>
+                </li>
+              ))}
+              {matchCount > results.length && (
+                <li className={styles.resultsMore}>+{matchCount - results.length} more</li>
+              )}
+            </ul>
+          )}
         </div>
       </div>
 

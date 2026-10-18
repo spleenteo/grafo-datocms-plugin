@@ -2,7 +2,7 @@ import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { expandAround } from '../data/expandAround';
 import { filterGraph, type Filters } from '../data/filterGraph';
-import { startingFilters } from '../data/startingFilters';
+import { isLargeGraph, startingFilters } from '../data/startingFilters';
 import { deserializeFilters, serializeFilters, startingKeyOf } from '../data/storedFilters';
 import { reconcileFilters, reconcileSelection } from '../data/reconcileView';
 import { nodeIndexById } from '../data/relationsOf';
@@ -30,6 +30,9 @@ interface Props {
   storageKey: string | null;
   ctx: RenderPageCtx;
 }
+
+/** Results listed under the search field when it reaches every record. */
+const MAX_RESULTS = 8;
 
 function isTextEntry(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -251,9 +254,22 @@ export default function GraphWorkspace({
     () => createCreatorResolver(() => ctxRef.current),
     [],
   );
+  // With nothing on the canvas the search reaches every record, so the editor
+  // can start the view from a record found; otherwise it stays on what is shown.
+  const isCanvasEmpty = visibleIds.size === 0;
   const matches = useMemo(
-    () => searchTitles(graph, visibleIds, query),
-    [graph, visibleIds, query],
+    () => searchTitles(graph, isCanvasEmpty ? null : visibleIds, query),
+    [graph, isCanvasEmpty, visibleIds, query],
+  );
+  const results = useMemo(
+    () =>
+      isCanvasEmpty
+        ? matches.slice(0, MAX_RESULTS).map((id) => {
+            const node = graph.nodes[indexById.get(id) ?? 0];
+            return { id, title: node.title, modelName: modelName(node.model) };
+          })
+        : null,
+    [isCanvasEmpty, matches, graph, indexById, modelName],
   );
   const matchIds = useMemo(() => new Set(matches), [matches]);
   const jumpToFirstMatch = useCallback(() => {
@@ -293,11 +309,28 @@ export default function GraphWorkspace({
             onSelect={selectNode}
           />
         )}
+        {isCanvasEmpty && (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyTitle}>
+              {isLargeGraph(graph) ? (
+                <>
+                  <strong>{graph.nodes.length} records</strong> · too many to draw at once
+                </>
+              ) : (
+                'Nothing matches the filters'
+              )}
+            </p>
+            <p>Search a record to start, or pick models in the rail.</p>
+          </div>
+        )}
         <CanvasControls
           query={query}
           onQueryChange={setQuery}
           onSearchEnter={jumpToFirstMatch}
           matchCount={matches.length}
+          results={results}
+          onPickResult={selectNode}
+          focusSearchOnMount={isCanvasEmpty}
           labelMode={labelMode}
           onLabelModeChange={setLabelMode}
           distance={distance}

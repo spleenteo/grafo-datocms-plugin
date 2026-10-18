@@ -11,3 +11,27 @@
   min-width: 0;
   position: relative;
 }
+
+/* Below the floating controls, never in the way of a click. */
+.emptyState {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xl);
+  text-align: center;
+  font-size: var(--font-size-m);
+  color: var(--color--ink-subtle);
+  pointer-events: none;
+}
+
+.emptyState p {
+  margin: 0;
+}
+
+.emptyTitle strong {
+  color: var(--color--ink);
+}
