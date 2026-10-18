@@ -2,6 +2,19 @@
 
 What changed in Grafo, by version. Newest first; each entry links the work and the decisions behind it.
 
+## v1.1.0 — 2026-10-19 — Usable on large projects
+
+Grafo stays readable on projects with thousands of records and dozens of models: a calmer canvas, findable models and relation fields, and a starting point that doesn't draw everything.
+
+- **Canvas**: hover takes effect after a short pause and doesn't dim large graphs; labels, strokes and arrows keep their screen size when zooming in; Smart labels at most 40 records plus the focus and 20 of its neighbours.
+- **Selection**: a selected record shows only its neighbourhood; deselecting brings the same view back.
+- **Models list**: search, sort by name or record count, first 10 rows plus every enabled model.
+- **Relation fields**: one field per model, named by its label and its target models, grouped by model; incoming fields of models outside the selection are listed too. Filters saved by 1.0.0 still load.
+- **Large projects**: above 1500 records Grafo opens on the starting models without orphans, or on an empty canvas with a centred search over records and models. Orphans start hidden when they are more than half the records.
+- **Work**: `large-projects`
+
+---
+
 ## v1.0.0 — 2026-10-18 — First release: record relations as an interactive graph
 
 Grafo adds a tab to the DatoCMS main navigation that draws the records of a project and the links between them as a force-directed graph. It loads only what the current role can read.

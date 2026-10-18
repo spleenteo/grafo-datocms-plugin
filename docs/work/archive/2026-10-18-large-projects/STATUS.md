@@ -1,11 +1,12 @@
 ---
-status: open
-phase: slice
-slice: V4
-step: close
+status: closed
+phase: done
+slice: null
+step: null
 work: large-projects
 stack: react
-updated: 2026-10-18
+updated: 2026-10-19
+archived: 2026-10-19
 tags: [work, large-projects]
 description: "Make Grafo usable on projects with thousands of records and dozens of models: readable canvas, findable models and relation fields, an entry point that doesn't draw everything."
 ---
@@ -22,7 +23,7 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 - [x] V1.1 — Zoom strokes and neighbour labels
 - [x] V2 — Models list: search, sort, show all
 - [x] V3 — Relation fields per model: "Model › Field" labels, scoped to visible models, search
-- [ ] V4 — Exploration mode for large projects (to shape with the owner)
+- [x] V4 — Exploration mode for large projects (to shape with the owner)
 
 ## Log
 
@@ -36,3 +37,4 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 - 2026-10-18 — V3 execute — per-model fields with labels, stored filters v2 (reads v1), rail grouped by model with search/collapse; opus review of data PASS — owner check — — —
 - 2026-10-18 — V3 close — owner checked; incoming fields of outside models, target hints — V4 to shape with the owner — — —
 - 2026-10-19 — V4 execute — starting policy (1500 / 50% orphans), search over every record on an empty canvas with a result list, empty state; controller reviewed, reframe for unseen picks — owner check — — —
+- 2026-10-19 — V4 close — owner checked; selection scope added; v1.1.0 recorded — merge, publish — — —

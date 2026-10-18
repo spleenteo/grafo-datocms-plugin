@@ -10,3 +10,4 @@ description: "Index of the works archived in docs/work/archive/, a folder Claude
 | Work | Closed | What it did | Where the outcome is |
 |---|---|---|---|
 | `grafo` | 2026-10-18 | Built Grafo, the DatoCMS plugin that shows record relations as an interactive graph (V1–V10) | `docs/CHANGELOG.md` v1.0.0 · 3 decisions |
+| `large-projects` | 2026-10-19 | Made Grafo usable on large projects: canvas at scale, models list, per-model relation fields, exploration mode, selection scope (V1–V4) | `docs/CHANGELOG.md` v1.1.0 · 0 decisions |

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Product name: **Grafo** (renamed from "Content Graph" on 2026-10-18; repo `spleenteo/grafo-datocms-plugin`, npm package `datocms-plugin-grafo`). Version 1.0.0, feature-complete: tab "Grafo" in the main navigation (`pageId` `graph`), config screen (starting and excluded models), role-aware CMA loading in `src/data/`, D3 renderer in `src/graph/`, UI in `src/components/` and `src/entrypoints/`. History and decisions: `docs/CHANGELOG.md`, `docs/decisions-log/`, archived work in `docs/work/archive/`.
+Product name: **Grafo** (renamed from "Content Graph" on 2026-10-18; repo `spleenteo/grafo-datocms-plugin`, npm package `datocms-plugin-grafo`). Version 1.1.0 (large-project usability added): tab "Grafo" in the main navigation (`pageId` `graph`), config screen (starting and excluded models), role-aware CMA loading in `src/data/`, D3 renderer in `src/graph/`, UI in `src/components/` and `src/entrypoints/`. History and decisions: `docs/CHANGELOG.md`, `docs/decisions-log/`, archived work in `docs/work/archive/`.
 
 Commands:
 

@@ -110,3 +110,9 @@ Shaped with the owner on 2026-10-18:
 - Rail: fields grouped by model in the models list order, only for enabled models; search above 10 fields; collapsible; All / None act on the listed fields only.
 - Added after the owner's first check: with relations outside shown (both/in), fields of other models that link into the selection get a "Linking into the selection" block, so those edges can be switched off; every chip names its target models (`fieldStats.ts`), restricted to the selected ones for incoming fields.
 - Inspector shows field labels, rows sorted by label.
+
+### V4 — done on 2026-10-19
+
+- `startingFilters`: > 1500 records is large; large without starting models opens with no model on, large with starting models hides orphans; orphans > 50% hide at the start everywhere.
+- Empty canvas: centred search over every record and model (picking a model shows it alone), focused on mount.
+- Added after the owner's check: a selection hides everything outside its neighbourhood (CSS only, layout untouched); no Smart budget while scoped.

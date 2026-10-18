@@ -20,10 +20,14 @@ Demo video: [`assets/preview.mp4`](https://raw.githubusercontent.com/spleenteo/g
 ## Features
 
 - **Filter rail.** Filter by model, status and relation field, with All/None per group. Double-click a model to show only that one. You can also hide orphans and reset the filters.
+- **Models list.** Search by name or API key, sort by name or record count from the column headers. Long lists show the first 10 models plus every enabled one, with Show all.
+- **Relation fields.** One chip per field and model, named by its label and the models it links to, grouped under the enabled models. With relations outside the selection shown, fields of other models that link into the selection are listed too. Search appears above 10 fields; the section collapses.
 - **Inspector.** Shows the model, title and status, an Open record button, and the outgoing and incoming relations. At the bottom it lists the creation, last update and publication dates and the creator.
-- **Selection.** Selecting a record expands the view with all of its relations and centres the camera on it and its neighbours. From there you can walk from one record to the next.
-- **Search by title.** Shows the match count; Enter jumps to the first match.
-- **Labels.** Three modes: Smart, All, On focus.
+- **Selection.** Selecting a record shows only it, its relations and their links, and centres the camera on them. The rest is hidden, not moved: clicking the background or Esc brings the same view back. From there you can walk from one record to the next.
+- **Large projects.** Above 1500 readable records Grafo opens on the starting models with orphans hidden, or, with none configured, on an empty canvas with the search in the middle: it finds records and models, and the view grows from what you pick. Orphans start hidden on any project where they are more than half the records.
+- **Search by title.** Shows the match count; Enter jumps to the first match. On an empty canvas it searches every record and lists models and records to pick from.
+- **Labels.** Three modes: Smart, All, On focus. Labels, strokes and arrows keep their screen size when zooming in. Smart labels at most 40 records, the most connected in view, plus the focus and up to 20 of its neighbours.
+- **Hover.** Focus follows the pointer after a short pause. Above 600 visible records hovering only shows the label; dimming follows the selection.
 - **View controls.** Zoom, fit, rearrange layout, and node distance. Distance is set automatically from the visible node count and canvas size, and can be overridden by hand.
 - **Reload.** Reloads the data and keeps filters, selection, layout and zoom.
 - **Keyboard.** Tab moves between records, Enter or Space selects, Esc clears the selection. A Help modal lists every shortcut.
@@ -72,7 +76,7 @@ The first request fetches the schema: `site` with `include=item_types,item_types
 
 ## Stored state
 
-The editor's filters are saved in `localStorage` under `grafo:filters:v1:<siteId>:<environment>:<userType>:<userId>`. Filters are stored by model and field API key, with switched-off models and fields stored as an exclusion list, so models and fields added later show up switched on. When an admin changes the starting models, the stored filters are ignored once. The key is removed when the filters match the starting ones. Grafo works normally when storage is blocked; it just doesn't remember anything.
+The editor's filters are saved in `localStorage` under `grafo:filters:v1:<siteId>:<environment>:<userType>:<userId>`. Filters are stored by model API key and by (model, field) API key pair, with switched-off models and fields stored as an exclusion list, so models and fields added later show up switched on. When an admin changes the starting models, the stored filters are ignored once. The key is removed when the filters match the starting ones. Filters saved by 1.0.0, keyed by field API key only, still load: a field switched off there is off in every model. The models list sort is stored under `grafo:modelSort:v1`. Grafo works normally when storage is blocked; it just doesn't remember anything.
 
 ![Help modal](https://raw.githubusercontent.com/spleenteo/grafo-datocms-plugin/main/assets/screenshots/help.png)
 
