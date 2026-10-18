@@ -12,6 +12,8 @@ type State =
   | { status: 'error'; message: string }
   | {
       status: 'done';
+      /** Key of the load that produced the graph: the workspace re-mounts when it changes. */
+      loadKey: string;
       graph: Graph;
       requestCount: number;
       isRefreshing: boolean;
@@ -53,7 +55,14 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     loadGraph({ apiToken, environment, baseUrl, permissions: permissionsRef.current })
       .then(({ graph, requestCount }) => {
         if (isCurrent()) {
-          setState({ status: 'done', graph, requestCount, isRefreshing: false, refreshError: null });
+          setState({
+            status: 'done',
+            loadKey,
+            graph,
+            requestCount,
+            isRefreshing: false,
+            refreshError: null,
+          });
         }
       })
       .catch((error: unknown) => {
@@ -68,6 +77,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   const reload = useCallback(() => {
     const { apiToken: token, environment: env, baseUrl: url } = optionsRef.current;
     if (!token) return;
+    const key = loadGraphKey(env, url, permissionsRef.current);
     generationRef.current += 1;
     const generation = generationRef.current;
     const isCurrent = () => generationRef.current === generation;
@@ -81,7 +91,14 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     })
       .then(({ graph, requestCount }) => {
         if (isCurrent()) {
-          setState({ status: 'done', graph, requestCount, isRefreshing: false, refreshError: null });
+          setState({
+            status: 'done',
+            loadKey: key,
+            graph,
+            requestCount,
+            isRefreshing: false,
+            refreshError: null,
+          });
         }
       })
       .catch((error: unknown) => {
@@ -111,7 +128,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     return (
       <Canvas ctx={ctx} noAutoResizer>
         <GraphWorkspace
-          key="workspace"
+          key={state.loadKey}
           graph={graph}
           requestCount={state.requestCount}
           isRefreshing={state.isRefreshing}

@@ -28,6 +28,9 @@ const NESTED_PER_PAGE = 30;
 const CONCURRENCY = 3;
 
 const memo = new Map<string, Promise<LoadGraphResult>>();
+// Latest fresh load per key: only that one may write its result to the memo.
+const freshTokens = new Map<string, number>();
+let lastFreshToken = 0;
 
 /**
  * Cache key of one load: same environment, endpoint and effective permissions.
@@ -125,9 +128,14 @@ async function loadGraphUncached(options: LoadGraphOptions): Promise<LoadGraphRe
 export function loadGraph(options: LoadGraphOptions): Promise<LoadGraphResult> {
   const key = loadGraphKey(options.environment, options.baseUrl, options.permissions);
   if (options.fresh) {
+    lastFreshToken += 1;
+    const token = lastFreshToken;
+    freshTokens.set(key, token);
     const promise = loadGraphUncached(options);
     promise.then(
-      (result) => memo.set(key, Promise.resolve(result)),
+      (result) => {
+        if (freshTokens.get(key) === token) memo.set(key, Promise.resolve(result));
+      },
       () => {},
     );
     return promise;
