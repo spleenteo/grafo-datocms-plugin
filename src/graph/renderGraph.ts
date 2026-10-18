@@ -157,6 +157,8 @@ const RELAYOUT_SPREAD = 30;
 // LABEL_BUDGET highest-degree nodes in view (plus focus, hover and matches).
 const SMART_MAX_NODES = 45;
 const LABEL_BUDGET = 40;
+// A focus labels itself and at most this many neighbours (the top ones in view).
+const NEAR_LABEL_BUDGET = 20;
 // `--label-k` is rewritten only when it moves by more than this ratio.
 const LABEL_K_EPSILON = 0.01;
 
@@ -290,6 +292,8 @@ export function renderGraph(
   let shownIds = new Set<string>();
   // Smart-mode budget labels: the top nodes in view, refreshed by refreshBudget().
   let budgetIds = new Set<string>();
+  // Focus + the neighbours that get a label: all of them up to NEAR_LABEL_BUDGET, else the top ones in view.
+  let nearLabelIds = new Set<string>();
   // Last value written to `--label-k` on the root svg: max(1, zoom scale).
   let labelK = 1;
   let destroyed = false;
@@ -614,8 +618,10 @@ export function renderGraph(
       for (const id of removed) nodeEls.get(id)?.g.classList.remove(styles.near);
       for (const id of added) nodeEls.get(id)?.g.classList.add(styles.near);
       focusSet = near;
-      for (const id of removed) paintLabel(id);
-      for (const id of added) paintLabel(id);
+      const oldLabelIds = nearLabelIds;
+      computeNearLabels(focus);
+      for (const id of oldLabelIds) paintLabel(id);
+      for (const id of nearLabelIds) paintLabel(id);
       const hi = new Set(focus !== null ? (incident.get(focus) ?? []) : []);
       const links = diffSets(hiEdges, hi);
       for (const edge of links.removed) setLinkHi(edge, false);
@@ -646,6 +652,7 @@ export function renderGraph(
     }
     focusSet = near;
     paintedHover = hover;
+    computeNearLabels(focus);
     computeBudget();
     paintLabels();
     hiEdges = new Set(focus !== null ? (incident.get(focus) ?? []) : []);
@@ -682,13 +689,13 @@ export function renderGraph(
     pill.setAttribute('height', String(box.height + 2 * PILL_PAD_Y));
   }
 
-  // Labels: focus + neighbours, the hovered node and matches always; "All" is a root class;
+  // Labels: the focus and its capped neighbours, the hovered node and matches always; "All" is a root class;
   // "Smart" adds the budget ids, or everything when the graph is small.
   function labelOn(n: SimNode): boolean {
     const isSmart = labelMode === 'smart';
     const isSmartAll = isSmart && visibleNodes.length <= SMART_MAX_NODES;
     return (
-      focusSet.has(n.id) ||
+      nearLabelIds.has(n.id) ||
       paintedHover === n.id ||
       matchIds.has(n.id) ||
       (isSmart && (isSmartAll || budgetIds.has(n.id)))
@@ -719,9 +726,30 @@ export function renderGraph(
     budgetIds = pickLabelBudget(candidates, viewBox(), LABEL_BUDGET);
   }
 
+  // The focus plus its neighbours with a position; only above NEAR_LABEL_BUDGET
+  // of them is the view and the degree ranking applied.
+  function computeNearLabels(focus: string | null) {
+    nearLabelIds = new Set();
+    if (focus === null) return;
+    nearLabelIds.add(focus);
+    const candidates = [];
+    for (const id of neighbours.get(focus) ?? []) {
+      const n = nodeById.get(id);
+      if (n && n.x !== undefined && n.y !== undefined) {
+        candidates.push({ id, degree: n.degree, x: n.x, y: n.y });
+      }
+    }
+    if (candidates.length <= NEAR_LABEL_BUDGET) {
+      for (const c of candidates) nearLabelIds.add(c.id);
+      return;
+    }
+    for (const id of pickLabelBudget(candidates, viewBox(), NEAR_LABEL_BUDGET)) nearLabelIds.add(id);
+  }
+
   // Budget then labels: on zoom end, simulation end, drag end, setLabelMode.
   function refreshBudget() {
     if (destroyed) return;
+    computeNearLabels(currentFocus().focus);
     computeBudget();
     paintLabels();
   }
