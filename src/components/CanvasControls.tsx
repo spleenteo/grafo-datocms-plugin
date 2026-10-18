@@ -143,7 +143,7 @@ export default function CanvasControls(props: Props) {
         </p>
         <div className={styles.bottomRight}>
           <div className={`${styles.distance} ${styles.auto}`}>
-            <label htmlFor="grafo-distance">Distance</label>
+            <span aria-hidden="true">Distance</span>
             <button
               type="button"
               className={styles.autoToggle}

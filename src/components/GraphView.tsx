@@ -50,6 +50,8 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
   matchIdsRef.current = matchIds;
   const distanceRef = useRef(distance);
   distanceRef.current = distance;
+  // Distance the current renderer runs at: set by the mount and by the distance effect.
+  const appliedDistanceRef = useRef(distance);
   // Filled by the mount effect's cleanup: the next mount (new data after a
   // refresh) starts where the old one left off.
   const seedRef = useRef<{ positions: Map<string, Point>; view: ViewState } | null>(null);
@@ -85,6 +87,7 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
       matchIds: matchIdsRef.current,
     });
     handleRef.current = handle;
+    appliedDistanceRef.current = distanceRef.current;
     // A fresh renderer starts with nothing selected.
     handle.setSelection(selectedIdRef.current);
     // A no-op unless the visible set changed since the mount read it.
@@ -117,13 +120,13 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
 
   // Every distance change centres the view. The workspace freezes the
   // automatic distance during a selection, so this never fights a focus.
-  const appliedDistanceRef = useRef(distance);
   useEffect(() => {
-    if (distance === appliedDistanceRef.current) return;
-    appliedDistanceRef.current = distance;
     const handle = handleRef.current;
-    if (!handle) return;
-    handle.reframe();
+    if (!handle || distance === appliedDistanceRef.current) return;
+    appliedDistanceRef.current = distance;
+    const { coreIds, contextIds } = visibleRef.current;
+    // reframe() only when setDistance() starts a settle that serves it.
+    if (coreIds.size + contextIds.size > 0) handle.reframe();
     handle.setDistance(distance);
   }, [distance]);
 
