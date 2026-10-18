@@ -18,7 +18,7 @@ export function createCreatorResolver(getCtx: () => CreatorCtx) {
   let ssoLoad: Promise<void> | null = null;
 
   const once = (current: Promise<void> | null, load: () => Promise<unknown>) =>
-    current ?? load().then(
+    current ?? Promise.resolve().then(load).then(
       () => undefined,
       () => undefined,
     );

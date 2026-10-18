@@ -43,14 +43,14 @@ export default function Inspector({
 }: Props) {
   const creator = nodeIndex === null ? null : graph.nodes[nodeIndex].creator;
   const creatorKey = creator ? `${creator.type}:${creator.id}` : null;
-  const [creatorName, setCreatorName] = useState<string | null>(null);
+  const [resolved, setResolved] = useState<{ key: string; name: string | null } | null>(null);
+  const creatorName = resolved && resolved.key === creatorKey ? resolved.name : null;
   useEffect(() => {
-    setCreatorName(null);
-    if (!creator) return;
+    if (!creator || !creatorKey) return;
     let cancelled = false;
     resolveCreatorName(creator).then(
-      (name) => !cancelled && setCreatorName(name),
-      () => undefined,
+      (name) => !cancelled && setResolved({ key: creatorKey, name }),
+      () => !cancelled && setResolved({ key: creatorKey, name: null }),
     );
     return () => {
       cancelled = true;
