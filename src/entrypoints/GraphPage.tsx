@@ -6,6 +6,7 @@ import GraphWorkspace from '../components/GraphWorkspace';
 import { loadGraph, loadGraphKey } from '../data/loadGraph';
 import { readPluginSettings } from '../data/pluginSettings';
 import type { Graph } from '../data/types';
+import { createGenerationGuard } from '../utils/generationGuard';
 import { errorMessage } from '../utils/errorMessage';
 import styles from './GraphPage.module.css';
 
@@ -43,13 +44,13 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   }, [permissions, apiToken, environment, baseUrl, userId, excludedModelApiKeys]);
 
   // Bumped by every load and refresh: a result applies only if no load started since.
-  const generationRef = useRef(0);
+  const generationRef = useRef(createGenerationGuard());
 
   useEffect(() => {
     if (!apiToken) return;
-    generationRef.current += 1;
-    const generation = generationRef.current;
-    const isCurrent = () => generationRef.current === generation;
+    const guard = generationRef.current;
+    const generation = guard.next();
+    const isCurrent = () => guard.isCurrent(generation);
     setState({ status: 'loading' });
     loadGraph({
       apiToken,
@@ -76,7 +77,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
       });
     return () => {
       // Invalidates this load (and any refresh started from it).
-      generationRef.current += 1;
+      generationRef.current.next();
     };
   }, [apiToken, loadKey]);
 
@@ -90,9 +91,9 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     } = optionsRef.current;
     if (!token) return;
     const key = loadGraphKey(env, url, user, permissionsRef.current, excluded);
-    generationRef.current += 1;
-    const generation = generationRef.current;
-    const isCurrent = () => generationRef.current === generation;
+    const guard = generationRef.current;
+    const generation = guard.next();
+    const isCurrent = () => guard.isCurrent(generation);
     setState((s) => (s.status === 'done' ? { ...s, isRefreshing: true, refreshError: null } : s));
     loadGraph({
       apiToken: token,

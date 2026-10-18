@@ -4,7 +4,7 @@ import { expandAround } from '../data/expandAround';
 import { filterGraph, type Filters } from '../data/filterGraph';
 import { startingFilters } from '../data/startingFilters';
 import { deserializeFilters, serializeFilters, startingKeyOf } from '../data/storedFilters';
-import { remapFilters } from '../data/remapFilters';
+import { reconcileFilters, reconcileSelection } from '../data/reconcileView';
 import { nodeIndexById } from '../data/relationsOf';
 import type { Graph } from '../data/types';
 import { autoDistance } from '../graph/autoDistance';
@@ -69,10 +69,8 @@ export default function GraphWorkspace({
   // A refreshed graph re-indexes models and fields: remap the filters in this
   // same render, so `filterGraph` never pairs the new graph with old indexes.
   const [prevGraph, setPrevGraph] = useState(graph);
-  let filters = storedFilters;
-  const isRemap = graph !== prevGraph;
+  const { filters, isRemap } = reconcileFilters(prevGraph, graph, storedFilters);
   if (isRemap) {
-    filters = remapFilters(prevGraph, graph, storedFilters);
     setPrevGraph(graph);
     setFilters(filters);
   }
@@ -113,15 +111,8 @@ export default function GraphWorkspace({
   let checkedSelectedId = rawSelectedId;
   if (filters !== prevFilters) {
     setPrevFilters(filters);
-    if (
-      !isRemap &&
-      checkedSelectedId !== null &&
-      !filtered.coreIds.has(checkedSelectedId) &&
-      !filtered.contextIds.has(checkedSelectedId)
-    ) {
-      checkedSelectedId = null;
-      setSelectedId(null);
-    }
+    checkedSelectedId = reconcileSelection(rawSelectedId, true, isRemap, filtered);
+    if (checkedSelectedId !== rawSelectedId) setSelectedId(checkedSelectedId);
   }
   // A selection that left the graph (after a reload) counts as none.
   const selectedIndex =

@@ -1,5 +1,6 @@
 import { buildClient } from '@datocms/cma-client-browser';
 import { buildGraph } from './buildGraph';
+import { createLoadMemo } from './loadMemo';
 import { parseSchema } from './parseSchema';
 import type { Graph, Permissions, RawItem, RawRecord } from './types';
 import { visibleModelPlan } from './visibleModelPlan';
@@ -27,10 +28,7 @@ const PER_PAGE = 500;
 const NESTED_PER_PAGE = 30;
 const CONCURRENCY = 3;
 
-const memo = new Map<string, Promise<LoadGraphResult>>();
-// Latest fresh load per key: only that one may write its result to the memo.
-const freshTokens = new Map<string, number>();
-let freshSeq = 0;
+const memo = createLoadMemo<LoadGraphResult>();
 
 /**
  * Cache key of one load: same environment, endpoint and effective permissions.
@@ -128,25 +126,5 @@ export function loadGraph(options: LoadGraphOptions): Promise<LoadGraphResult> {
     options.permissions,
     options.excludedModelApiKeys,
   );
-  if (options.fresh) {
-    freshSeq += 1;
-    const token = freshSeq;
-    freshTokens.set(key, token);
-    const promise = loadGraphUncached(options);
-    promise.then(
-      (result) => {
-        if (freshTokens.get(key) === token) memo.set(key, Promise.resolve(result));
-      },
-      () => {},
-    );
-    return promise;
-  }
-  const cached = memo.get(key);
-  if (cached) return cached;
-  const promise = loadGraphUncached(options);
-  memo.set(key, promise);
-  promise.catch(() => {
-    if (memo.get(key) === promise) memo.delete(key);
-  });
-  return promise;
+  return memo.load(key, () => loadGraphUncached(options), options.fresh);
 }
