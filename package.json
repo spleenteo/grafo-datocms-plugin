@@ -12,10 +12,12 @@
     "entryPoint": "dist/index.html",
     "permissions": [
       "currentUserAccessToken"
-    ]
+    ],
+    "coverImage": "design/export/grafo-cover.png"
   },
   "files": [
-    "dist"
+    "dist",
+    "design/export/grafo-cover.png"
   ],
   "scripts": {
     "dev": "vite",
