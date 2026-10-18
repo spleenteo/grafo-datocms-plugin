@@ -19,9 +19,9 @@ const node = (id: string, model: number, status: NodeStatus = 'published') => ({
 const graph: Graph = {
   models: [0, 1, 2].map((i) => ({ itemTypeId: `t${i}`, apiKey: `m${i}`, name: `M${i}`, count: 1 })),
   fields: [
-    { apiKey: 'features', isPseudo: false },
-    { apiKey: 'tags', isPseudo: false },
-    { apiKey: 'related', isPseudo: false },
+    { apiKey: 'features', isPseudo: false, model: 0, label: 'features' },
+    { apiKey: 'tags', isPseudo: false, model: 0, label: 'tags' },
+    { apiKey: 'related', isPseudo: false, model: 0, label: 'related' },
   ],
   nodes: [node('plan', 0), node('feat', 1), node('tag', 2), node('draftTag', 2, 'draft'), node('other', 2)],
   edges: [

@@ -23,7 +23,7 @@ const node = (id: string, m = 0) => ({
 function graph(overrides: Partial<Graph> = {}): Graph {
   return {
     models: [model('a', 3)],
-    fields: [{ apiKey: 'f', isPseudo: false }],
+    fields: [{ apiKey: 'f', isPseudo: false, model: 0, label: 'f' }],
     nodes: [node('1'), node('2'), node('3')],
     edges: [
       { source: 0, target: 1, field: 0 },
@@ -69,8 +69,8 @@ describe('prepareSimulation', () => {
     const { nodes, links } = prepareSimulation(
       graph({
         fields: [
-          { apiKey: 'f', isPseudo: false },
-          { apiKey: 'g', isPseudo: false },
+          { apiKey: 'f', isPseudo: false, model: 0, label: 'f' },
+          { apiKey: 'g', isPseudo: false, model: 0, label: 'g' },
         ],
         edges: [
           { source: 0, target: 1, field: 0 },

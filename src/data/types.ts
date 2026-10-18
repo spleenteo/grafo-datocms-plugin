@@ -10,6 +10,7 @@ export type RawRecord = RawItem | RawNestedItem;
 export type SchemaField = {
   id: string;
   apiKey: string;
+  label: string;
   fieldType: string;
   isLocalized: boolean;
 };
@@ -47,9 +48,24 @@ export type GraphModel = {
   readonly name: string;
   count: number;
 };
-export type GraphField = { readonly apiKey: string; readonly isPseudo: boolean };
-/** Identity of a field across graphs: pseudo (tree) fields never collide with real ones. */
-export const fieldKey = (f: GraphField): string => `${f.isPseudo ? 1 : 0}:${f.apiKey}`;
+export type GraphField = {
+  readonly apiKey: string;
+  readonly isPseudo: boolean;
+  /** Index into `graph.models` of the model that owns the field. */
+  readonly model: number;
+  /** Schema label; `'parent (tree)'` for the pseudo field. */
+  readonly label: string;
+};
+/** Session identity of a field across graphs: per model, pseudo (tree) fields never collide with real ones. */
+export const fieldKey = (f: GraphField, models: readonly GraphModel[]): string =>
+  `${f.isPseudo ? 1 : 0}:${models[f.model].itemTypeId}:${f.apiKey}`;
+/** Storage identity of a field: `[modelApiKey, fieldApiKey, isPseudo]`. */
+export type FieldStoreKey = [string, string, boolean];
+export const fieldStoreKey = (f: GraphField, models: readonly GraphModel[]): FieldStoreKey => [
+  models[f.model].apiKey,
+  f.apiKey,
+  f.isPseudo,
+];
 export type GraphNode = {
   readonly id: string;
   readonly title: string;
@@ -76,6 +92,8 @@ export type Graph = {
   readonly edges: readonly GraphEdge[];
 };
 
-/** Display name of a field; the tree pseudo-field has no api key worth showing. */
-export const fieldLabel = (field: GraphField): string =>
-  field.isPseudo ? 'parent (tree)' : field.apiKey;
+/** Display name of a field: its schema label. */
+export const fieldLabel = (field: GraphField): string => field.label;
+/** "Model › Label", for tooltips. */
+export const fieldTitle = (field: GraphField, graph: Pick<Graph, 'models'>): string =>
+  `${graph.models[field.model].name} › ${field.label}`;

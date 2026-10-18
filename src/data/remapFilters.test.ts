@@ -4,9 +4,9 @@ import { remapFilters } from './remapFilters';
 import type { Graph } from './types';
 
 const m = (id: string, apiKey = id) => ({ itemTypeId: id, apiKey, name: apiKey, count: 0 });
-const g = (models: string[], fields: { apiKey: string; isPseudo: boolean }[]): Graph => ({
+const g = (models: string[], fields: { apiKey: string; isPseudo: boolean; model?: number }[]): Graph => ({
   models: models.map((id) => m(id)),
-  fields,
+  fields: fields.map((x) => ({ apiKey: x.apiKey, isPseudo: x.isPseudo, model: x.model ?? 0, label: x.apiKey })),
   nodes: [],
   edges: [],
 });
@@ -33,6 +33,19 @@ describe('remapFilters', () => {
       { apiKey: 'new', isPseudo: false },
     ]);
     expect([...remapFilters(prev, next, f).fields].sort()).toEqual([0, 2]);
+  });
+  it('keeps a per-model field off across a refresh and turns new fields on', () => {
+    const prev = g(['a', 'b'], [
+      { apiKey: 'category', isPseudo: false, model: 0 },
+      { apiKey: 'category', isPseudo: false, model: 1 },
+    ]);
+    const f = { ...allFilters(prev), fields: new Set([0]) }; // b's category off
+    const next = g(['b', 'a'], [
+      { apiKey: 'category', isPseudo: false, model: 0 }, // b
+      { apiKey: 'category', isPseudo: false, model: 1 }, // a
+      { apiKey: 'tags', isPseudo: false, model: 1 },
+    ]);
+    expect([...remapFilters(prev, next, f).fields].sort()).toEqual([1, 2]);
   });
   it('copies scalar filters into new sets', () => {
     const prev = g(['a'], []);

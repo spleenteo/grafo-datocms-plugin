@@ -23,8 +23,8 @@ const node = (id: string, model: number, status: NodeStatus = 'published') => ({
 const graph: Graph = {
   models: [0, 1].map((i) => ({ itemTypeId: `t${i}`, apiKey: `m${i}`, name: `M${i}`, count: 2 })),
   fields: [
-    { apiKey: 'f0', isPseudo: false },
-    { apiKey: 'f1', isPseudo: false },
+    { apiKey: 'f0', isPseudo: false, model: 0, label: 'f0' },
+    { apiKey: 'f1', isPseudo: false, model: 0, label: 'f1' },
   ],
   nodes: [node('a', 0), node('b', 0), node('c', 1), node('d', 1, 'draft')],
   edges: [

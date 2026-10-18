@@ -5,6 +5,7 @@ import type { RawItem, Schema, SchemaItemType } from './types';
 const f = (apiKey: string, fieldType: string, isLocalized = false) => ({
   id: `f-${apiKey}`,
   apiKey,
+  label: apiKey,
   fieldType,
   isLocalized,
 });
@@ -73,7 +74,7 @@ describe('buildGraph', () => {
       [item('1', 'article', { author: '2' }), item('2', 'article')],
       [],
     );
-    expect(g.fields).toEqual([{ apiKey: 'author', isPseudo: false }]);
+    expect(g.fields).toEqual([{ apiKey: 'author', isPseudo: false, model: 0, label: 'author' }]);
     expect(g.edges).toEqual([{ source: 0, target: 1, field: 0 }]);
   });
 
@@ -86,7 +87,7 @@ describe('buildGraph', () => {
       [item('1', 'doc', { sections: ['b1'] }), item('2', 'doc')],
       [item('b1', 'blk', { ref: '2' })],
     );
-    expect(g.fields).toEqual([{ apiKey: 'sections', isPseudo: false }]);
+    expect(g.fields).toEqual([{ apiKey: 'sections', isPseudo: false, model: 0, label: 'sections' }]);
     expect(g.edges).toEqual([{ source: 0, target: 1, field: 0 }]);
   });
 
@@ -104,8 +105,8 @@ describe('buildGraph', () => {
       [],
     );
     expect(g.fields).toEqual([
-      { apiKey: 'parent', isPseudo: false },
-      { apiKey: 'parent', isPseudo: true },
+      { apiKey: 'parent', isPseudo: false, model: 0, label: 'parent' },
+      { apiKey: 'parent', isPseudo: true, model: 0, label: 'parent (tree)' },
     ]);
     expect(g.edges).toEqual([
       { source: 1, target: 0, field: 0 },
@@ -153,5 +154,37 @@ describe('buildGraph', () => {
       [],
     );
     expect(g.nodes.map((n) => n.status)).toEqual(['draft', 'updated', 'published']);
+  });
+
+  it('gives the same field api key of two models two fields, with the schema label', () => {
+    const a = t('a', { fields: [{ ...f('category', 'link'), label: 'Main category' }] });
+    const b = t('b', { fields: [{ ...f('category', 'link'), label: 'Kind' }] });
+    const g = buildGraph(
+      mk([a, b]),
+      [item('1', 'a', { category: '3' }), item('2', 'b', { category: '3' }), item('3', 'a')],
+      [],
+    );
+    expect(g.fields).toEqual([
+      { apiKey: 'category', isPseudo: false, model: 0, label: 'Main category' },
+      { apiKey: 'category', isPseudo: false, model: 1, label: 'Kind' },
+    ]);
+    expect(g.edges).toEqual([
+      { source: 0, target: 2, field: 0 },
+      { source: 1, target: 2, field: 1 },
+    ]);
+  });
+
+  it('gives each tree model its own pseudo field', () => {
+    const a = t('a', { isTree: true });
+    const b = t('b', { isTree: true });
+    const g = buildGraph(
+      mk([a, b]),
+      [item('1', 'a'), item('2', 'a', { parent_id: '1' }), item('3', 'b'), item('4', 'b', { parent_id: '3' })],
+      [],
+    );
+    expect(g.fields.map((x) => [x.model, x.isPseudo, x.label])).toEqual([
+      [0, true, 'parent (tree)'],
+      [1, true, 'parent (tree)'],
+    ]);
   });
 });

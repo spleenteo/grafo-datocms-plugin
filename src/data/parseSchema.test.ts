@@ -25,7 +25,7 @@ function field(id: string, itemTypeId: string, apiKey: string, fieldType: string
   return {
     type: 'field',
     id,
-    attributes: { api_key: apiKey, field_type: fieldType, localized },
+    attributes: { api_key: apiKey, label: `L ${apiKey}`, field_type: fieldType, localized },
     relationships: { item_type: ref('item_type', itemTypeId), fieldset: none },
   };
 }
@@ -64,6 +64,10 @@ describe('parseSchema', () => {
       ['headline', true],
       ['slug_title', false],
     ]);
+  });
+
+  it('reads the field label', () => {
+    expect(schema.itemTypes.get('m1')?.fields.map((f) => f.label)).toEqual(['L headline', 'L slug_title']);
   });
 
   it('prefers presentation_title_field, falls back to title_field, else null', () => {

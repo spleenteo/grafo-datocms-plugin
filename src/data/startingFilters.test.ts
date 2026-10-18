@@ -4,7 +4,7 @@ import type { Graph } from './types';
 
 const graph: Graph = {
   models: [0, 1, 2].map((i) => ({ itemTypeId: `t${i}`, apiKey: `m${i}`, name: `M${i}`, count: 1 })),
-  fields: [{ apiKey: 'f0', isPseudo: false }],
+  fields: [{ apiKey: 'f0', isPseudo: false, model: 0, label: 'f0' }],
   nodes: [],
   edges: [],
 };

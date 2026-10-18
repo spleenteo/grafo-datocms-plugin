@@ -5,6 +5,7 @@ import type { RawItem, Schema, SchemaItemType } from './types';
 const f = (apiKey: string, fieldType: string, isLocalized = false) => ({
   id: `f-${apiKey}`,
   apiKey,
+  label: apiKey,
   fieldType,
   isLocalized,
 });

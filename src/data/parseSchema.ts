@@ -15,6 +15,7 @@ export function parseSchema(site: RawApiTypes.SiteSelfTargetSchema): Schema {
       list.push({
         id: resource.id,
         apiKey: resource.attributes.api_key,
+        label: resource.attributes.label,
         fieldType: resource.attributes.field_type,
         isLocalized: resource.attributes.localized,
       });

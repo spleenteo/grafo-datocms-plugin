@@ -11,7 +11,7 @@ import type {
   Schema,
   SchemaItemType,
 } from './types';
-import { fieldKey, isRecord } from './types';
+import { isRecord } from './types';
 
 export const PARENT_FIELD_KEY = 'parent';
 
@@ -88,12 +88,15 @@ export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]
 
   const fields: GraphField[] = [];
   const fieldIndex = new Map<string, number>();
-  const fieldFor = (apiKey: string, isPseudo: boolean): number => {
-    const key = fieldKey({ apiKey, isPseudo });
+  const fieldFor = (model: number, itemType: SchemaItemType, apiKey: string, isPseudo: boolean): number => {
+    const key = `${isPseudo ? 1 : 0}:${itemType.id}:${apiKey}`;
     let idx = fieldIndex.get(key);
     if (idx === undefined) {
       idx = fields.length;
-      fields.push({ apiKey, isPseudo });
+      const label = isPseudo
+        ? 'parent (tree)'
+        : (itemType.fields.find((f) => f.apiKey === apiKey)?.label ?? apiKey);
+      fields.push({ apiKey, isPseudo, model, label });
       fieldIndex.set(key, idx);
     }
     return idx;
@@ -101,8 +104,15 @@ export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]
 
   const edges: GraphEdge[] = [];
   // extractLinks dedupes per field and the tree pseudo-field is added once per record.
-  const addEdge = (source: number, target: number, apiKey: string, isPseudo: boolean) => {
-    edges.push({ source, target, field: fieldFor(apiKey, isPseudo) });
+  const addEdge = (
+    source: number,
+    target: number,
+    itemType: SchemaItemType,
+    apiKey: string,
+    isPseudo: boolean,
+  ) => {
+    const field = fieldFor(modelIndex.get(itemType.id) as number, itemType, apiKey, isPseudo);
+    edges.push({ source, target, field });
   };
 
   kept.forEach(({ item, itemType }, source) => {
@@ -110,13 +120,13 @@ export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]
     for (const link of extractLinks(itemType, values, lookup)) {
       const target = nodeIndex.get(link.targetId);
       if (target === undefined) continue;
-      addEdge(source, target, link.fieldApiKey, false);
+      addEdge(source, target, itemType, link.fieldApiKey, false);
     }
     if (itemType.isTree) {
       const parentId = values.parent_id;
       if (typeof parentId === 'string') {
         const target = nodeIndex.get(parentId);
-        if (target !== undefined) addEdge(source, target, PARENT_FIELD_KEY, true);
+        if (target !== undefined) addEdge(source, target, itemType, PARENT_FIELD_KEY, true);
       }
     }
   });

@@ -4,7 +4,7 @@ import { fieldKey } from './types';
 
 /**
  * Carries filters from `prev` over to `next` after a refresh. Models match by
- * `itemTypeId`, fields by `(apiKey, isPseudo)`. Entries new in `next` are on;
+ * `itemTypeId`, fields by `fieldKey` (model, api key, pseudo). Entries new in `next` are on;
  * entries gone from `next` are dropped.
  */
 export function remapFilters(prev: Graph, next: Graph, filters: Filters): Filters {
@@ -15,10 +15,10 @@ export function remapFilters(prev: Graph, next: Graph, filters: Filters): Filter
     if (p === undefined || filters.models.has(p)) models.add(i);
   });
 
-  const prevFieldIdx = new Map(prev.fields.map((f, i) => [fieldKey(f), i]));
+  const prevFieldIdx = new Map(prev.fields.map((f, i) => [fieldKey(f, prev.models), i]));
   const fields = new Set<number>();
   next.fields.forEach((f, i) => {
-    const p = prevFieldIdx.get(fieldKey(f));
+    const p = prevFieldIdx.get(fieldKey(f, next.models));
     if (p === undefined || filters.fields.has(p)) fields.add(i);
   });
 

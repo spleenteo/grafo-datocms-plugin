@@ -17,8 +17,8 @@ const node = (id: string, title: string) => ({
 const graph: Graph = {
   models: [{ itemTypeId: 't', apiKey: 'm', name: 'M', count: 4 }],
   fields: [
-    { apiKey: 'zeta', isPseudo: false },
-    { apiKey: 'alpha', isPseudo: false },
+    { apiKey: 'zeta', isPseudo: false, model: 0, label: 'zeta' },
+    { apiKey: 'alpha', isPseudo: false, model: 0, label: 'alpha' },
   ],
   nodes: [node('a', 'A'), node('b', 'B'), node('c', 'C'), node('d', 'D')],
   edges: [
