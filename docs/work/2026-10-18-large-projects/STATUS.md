@@ -2,7 +2,7 @@
 status: open
 phase: slice
 slice: V3
-step: plan
+step: close
 work: large-projects
 stack: react
 updated: 2026-10-18
@@ -33,3 +33,4 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 - 2026-10-18 — V1.1 execute+close — strokes/arrows at screen size, neighbour label cap; harness checked — owner check, then V2 — — —
 - 2026-10-18 — V2 execute — search, Count/Name sort, Show all; controller reviewed the diff — owner check — — —
 - 2026-10-18 — V2 close — owner checked; column-header sort, enabled models stay visible — V3 plan — — —
+- 2026-10-18 — V3 execute — per-model fields with labels, stored filters v2 (reads v1), rail grouped by model with search/collapse; opus review of data PASS — owner check — — —
