@@ -64,6 +64,13 @@
   stroke-opacity: 0.9;
 }
 
+/* With a selection (`scoped` on the root) only the selected node, its
+   neighbours and their links (`inScope`) are drawn; the rest keeps its place. */
+.scoped .node:not(.inScope),
+.scoped .link:not(.inScope) {
+  display: none;
+}
+
 /* With a focus (`focusing` on the root) everything but its links and its
    focus + neighbours (`near`) dims; without one, search misses (`dim`) do. */
 .focusing .link:not(.hi) {

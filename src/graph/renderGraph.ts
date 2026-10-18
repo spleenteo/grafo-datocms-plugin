@@ -282,6 +282,11 @@ export function renderGraph(
   // focus + neighbours (`near`), also read by the labels-only pass.
   let focusSet = new Set<string>();
   let paintedSel: string | null = null;
+  // Selection scope: the selected node, its neighbours and their links. With a
+  // selection everything else is hidden (root `scoped`), positions untouched,
+  // so a deselect shows the same layout again.
+  let scopeIds = new Set<string>();
+  let scopeEdges = new Set<number>();
   let paintedFocus: string | null = null;
   // Node with the label-only `hovered` class (pointer hover on a large graph).
   let paintedHover: string | null = null;
@@ -598,6 +603,32 @@ export function renderGraph(
     paintFrame = null;
   }
 
+  // Diffs the scope classes (O(degree)); `full` repaints every visible element,
+  // after a join.
+  function paintScope(sel: string | null, full = false) {
+    const ids = nearOf(sel);
+    const edges = new Set(sel !== null ? (incident.get(sel) ?? []) : []);
+    if (full) {
+      for (const n of visibleNodes) nodeEls.get(n.id)?.g.classList.toggle(styles.inScope, ids.has(n.id));
+      for (const l of visibleLinks) linkEls.get(l.edge)?.classList.toggle(styles.inScope, edges.has(l.edge));
+    } else {
+      const nodes = diffSets(scopeIds, ids);
+      for (const id of nodes.removed) nodeEls.get(id)?.g.classList.remove(styles.inScope);
+      for (const id of nodes.added) nodeEls.get(id)?.g.classList.add(styles.inScope);
+      const links = diffSets(scopeEdges, edges);
+      for (const e of links.removed) linkEls.get(e)?.classList.remove(styles.inScope);
+      for (const e of links.added) linkEls.get(e)?.classList.add(styles.inScope);
+    }
+    scopeIds = ids;
+    scopeEdges = edges;
+    svg.classed(styles.scoped, sel !== null);
+  }
+
+  // Shown on the canvas: every visible node, or only the selection scope.
+  function isShown(n: SimNode): boolean {
+    return scopeIds.size === 0 || scopeIds.has(n.id);
+  }
+
   // Focus or selection change: touches only the nodes and links whose state
   // changed since the last paint, O(degree).
   function paint() {
@@ -608,6 +639,10 @@ export function renderGraph(
       if (paintedSel !== null) nodeEls.get(paintedSel)?.g.classList.remove(styles.selected);
       if (sel !== null) nodeEls.get(sel)?.g.classList.add(styles.selected);
       paintedSel = sel;
+      paintScope(sel);
+      // No budget labels while a selection scopes the view.
+      computeBudget();
+      paintLabels();
     }
     const focusChanged = focus !== paintedFocus;
     if (focusChanged) {
@@ -652,6 +687,7 @@ export function renderGraph(
     }
     focusSet = near;
     paintedHover = hover;
+    paintScope(sel, true);
     computeNearLabels(focus);
     computeBudget();
     paintLabels();
@@ -716,6 +752,8 @@ export function renderGraph(
   function computeBudget() {
     budgetIds = new Set();
     if (labelMode !== 'smart' || visibleNodes.length <= SMART_MAX_NODES) return;
+    // A selection labels itself and its top neighbours (nearLabelIds): enough.
+    if (scopeIds.size > 0) return;
     if (!svgEl.clientWidth || !svgEl.clientHeight) return;
     const candidates = [];
     for (const n of visibleNodes) {
@@ -842,7 +880,7 @@ export function renderGraph(
     const box = withBox ? emptyBox() : null;
     for (const n of visibleNodes) {
       nodeEls.get(n.id)?.g.setAttribute('transform', `translate(${n.x ?? 0},${n.y ?? 0})`);
-      if (box) extendBox(box, n);
+      if (box && isShown(n)) extendBox(box, n);
     }
     return box;
   }
@@ -924,7 +962,7 @@ export function renderGraph(
     let box = fromBox;
     if (!box) {
       box = emptyBox();
-      for (const n of visibleNodes) extendBox(box, n);
+      for (const n of visibleNodes) if (isShown(n)) extendBox(box, n);
     }
     const { x0, y0, x1, y1 } = box;
     const bw = Math.max(1, x1 - x0);
