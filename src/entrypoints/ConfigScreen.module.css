@@ -1,0 +1,8 @@
+.root {
+  padding-bottom: 220px;
+}
+
+.note {
+  margin: 0;
+  color: var(--light-body-color);
+}

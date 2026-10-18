@@ -6,6 +6,7 @@ import 'datocms-react-ui/styles.css';
 import './graph/modelColors.css';
 
 const LazyGraphPage = lazy(() => import('./entrypoints/GraphPage'));
+const LazyConfigScreen = lazy(() => import('./entrypoints/ConfigScreen'));
 const LazyHelpModal = lazy(() => import('./entrypoints/HelpModal'));
 
 connect({
@@ -18,6 +19,13 @@ connect({
         pointsTo: { pageId: 'graph' },
       },
     ];
+  },
+  renderConfigScreen(ctx) {
+    render(
+      <Suspense fallback={<Spinner size={30} placement="centered" />}>
+        <LazyConfigScreen ctx={ctx} />
+      </Suspense>,
+    );
   },
   renderPage(pageId, ctx) {
     switch (pageId) {
