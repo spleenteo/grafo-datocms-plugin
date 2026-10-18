@@ -16,6 +16,7 @@ import { zoom, zoomIdentity, zoomTransform } from 'd3-zoom';
 import type { D3ZoomEvent, ZoomTransform } from 'd3-zoom';
 import { sameSet, sameVisibleSet } from '../data/filterGraph';
 import type { VisibleSet } from '../data/filterGraph';
+import { buildAdjacency, diffSets } from './adjacency';
 import styles from './graph.module.css';
 import { modelColor } from './modelColor';
 import { relativeRadius } from './prepareSimulation';
@@ -103,6 +104,15 @@ export interface RenderGraphHandle {
 
 type NodeSelection = Selection<SVGGElement, SimNode, SVGGElement, unknown>;
 type LinkSelection = Selection<SVGLineElement, SimLink, SVGGElement, unknown>;
+
+// A node group and the children join() and paint() write to.
+interface NodeEls {
+  g: SVGGElement;
+  halo: SVGCircleElement | null;
+  ring: SVGCircleElement | null;
+  dot: SVGCircleElement | null;
+  label: SVGTextElement | null;
+}
 
 const PRETICK_MAX_NODES = 1000;
 const PRETICKS = 300;
@@ -235,6 +245,9 @@ export function renderGraph(
   let visibleNodes: SimNode[] = [];
   let visibleLinks: SimLink[] = [];
   let visibleIds = new Set<string>();
+  // Neighbour ids and incident edges per node over visibleLinks; rebuilt by setVisible().
+  let neighbours = new Map<string, string[]>();
+  let incident = new Map<string, number[]>();
   let selectedId: string | null = null;
   // Last setSelection() id, visible or not: an update may make it visible.
   let requestedId: string | null = null;
@@ -246,8 +259,14 @@ export function renderGraph(
   // or other programmatic transforms. When set, settles don't fit on `end`.
   let userMoved = (initialPositions && options.initialUserMoved) || false;
   let scale = 1;
-  // Focus + neighbours from the last paint(); read by the labels-only pass.
+  // Painted state: paint() only touches what changed since. focusSet is the
+  // focus + neighbours (`near`), also read by the labels-only pass.
   let focusSet = new Set<string>();
+  let paintedSel: string | null = null;
+  let paintedFocus: string | null = null;
+  let hiEdges = new Set<number>();
+  // Hover paints coalesce into one frame.
+  let paintFrame: number | null = null;
   // Nodes with the `show` class from the last paintLabels(); read by the fit.
   let shownIds = new Set<string>();
   // Last smart threshold on zoom, so a zoom only repaints labels when crossing it.
@@ -289,6 +308,9 @@ export function renderGraph(
       if (!l || !isVisible(endId(l.source)) || !isVisible(endId(l.target))) continue;
       visibleLinks.push(l);
     }
+    ({ neighbours, incident } = buildAdjacency(
+      visibleLinks.map((l) => ({ source: endId(l.source), target: endId(l.target), edge: l.edge })),
+    ));
   }
 
   // Nodes entering the visible set (also ones seen before) start next to the
@@ -298,11 +320,9 @@ export function renderGraph(
     const sel = selectedId !== null ? nodeById.get(selectedId) : undefined;
     const anchorOf = (n: SimNode): SimNode | undefined => {
       if (sel && sel !== n && sel.x !== undefined && sel.y !== undefined) return sel;
-      for (const l of visibleLinks) {
-        const s = endId(l.source);
-        const t = endId(l.target);
-        const other = s === n.id ? t : t === n.id ? s : null;
-        if (other === null || other === n.id || !wasVisible.has(other)) continue;
+      // First neighbour in link order that was visible and has a position.
+      for (const other of neighbours.get(n.id) ?? []) {
+        if (!wasVisible.has(other)) continue;
         const o = nodeById.get(other);
         if (o && o.x !== undefined && o.y !== undefined) return o;
       }
@@ -401,12 +421,12 @@ export function renderGraph(
       })
       .on('mouseenter', (_event: MouseEvent, d) => {
         hoveredId = d.id;
-        paint();
+        schedulePaint();
       })
       .on('mouseleave', (_event: MouseEvent, d) => {
         if (hoveredId !== d.id) return;
         hoveredId = null;
-        paint();
+        schedulePaint();
       })
       .on('focus', (_event: FocusEvent, d) => {
         hoveredId = d.id;
@@ -417,11 +437,23 @@ export function renderGraph(
         hoveredId = null;
         paint();
       });
+    g.each(function (d) {
+      nodeEls.set(d.id, {
+        g: this,
+        halo: this.querySelector<SVGCircleElement>(`.${styles.halo}`),
+        ring: this.querySelector<SVGCircleElement>(`.${styles.ring}`),
+        dot: this.querySelector<SVGCircleElement>(`.${styles.dot}`),
+        label: this.querySelector<SVGTextElement>(`.${styles.label}`),
+      });
+    });
     return g;
   }
 
   let linkSel: LinkSelection = linkLayer.selectAll<SVGLineElement, SimLink>('line');
   let nodeSel: NodeSelection = nodeLayer.selectAll<SVGGElement, SimNode>('g');
+  // Elements of the joined nodes and links, by id and edge.
+  const nodeEls = new Map<string, NodeEls>();
+  let linkEls = new Map<number, SVGLineElement>();
 
   function join(nodesToShow: SimNode[], linksToShow: SimLink[], contextIds: Set<string>) {
     linkSel = linkLayer
@@ -431,87 +463,184 @@ export function renderGraph(
     nodeSel = nodeLayer
       .selectAll<SVGGElement, SimNode>('g')
       .data(nodesToShow, (d) => d.id)
-      .join(enterNodes, (u) => u, (x) => x.remove());
-    nodeSel.classed(styles.ctx, (d) => contextIds.has(d.id));
+      .join(
+        enterNodes,
+        (u) => u,
+        (x) => x.each((d) => nodeEls.delete(d.id)).remove(),
+      );
+    const links = new Map<number, SVGLineElement>();
+    linkSel.each(function (d) {
+      links.set(d.edge, this);
+    });
+    linkEls = links;
     // Radii change on every update (relative to the visible set).
-    nodeSel.select(`.${styles.halo}`).attr('r', (d) => d.r + 7);
-    nodeSel.select(`.${styles.ring}`).attr('r', (d) => d.r + 3.5);
-    nodeSel.select(`.${styles.dot}`).attr('r', (d) => d.r);
-    nodeSel.select(`.${styles.label}`).attr('x', (d) => d.r + LABEL_GAP);
+    for (const n of nodesToShow) {
+      const e = nodeEls.get(n.id);
+      if (!e) continue;
+      e.g.classList.toggle(styles.ctx, contextIds.has(n.id));
+      e.halo?.setAttribute('r', String(n.r + 7));
+      e.ring?.setAttribute('r', String(n.r + 3.5));
+      e.dot?.setAttribute('r', String(n.r));
+      e.label?.setAttribute('x', String(n.r + LABEL_GAP));
+    }
   }
 
-  // Focus = hovered node, else selected node (POC `paint()`). Neighbours are
-  // the nodes at the other end of a visible link of the focus node.
-  function paint() {
-    if (destroyed) return;
+  // Focus = hovered node, else selected node. Neighbours are the other ends
+  // of the focus node's visible links. Everything outside focus + neighbours
+  // dims through the root `focusing` class; with no focus, search misses dim
+  // through the node `dim` class.
+  function currentFocus() {
     const sel = selectedId !== null && visibleIds.has(selectedId) ? selectedId : null;
     const hov = hoveredId !== null && visibleIds.has(hoveredId) ? hoveredId : null;
-    const focus = hov ?? sel;
-    const neighbours = new Set<string>();
-    if (focus !== null) {
-      neighbours.add(focus);
-      for (const l of visibleLinks) {
-        const s = endId(l.source);
-        const t = endId(l.target);
-        if (s === focus) neighbours.add(t);
-        if (t === focus) neighbours.add(s);
-      }
-    }
-    const hasQuery = matchIds.size > 0;
-    nodeSel
-      .classed(styles.selected, (d) => d.id === sel)
-      .classed(styles.focused, (d) => d.id === focus)
-      .classed(styles.dim, (d) =>
-        focus !== null ? !neighbours.has(d.id) : hasQuery && !matchIds.has(d.id),
-      );
-    focusSet = neighbours;
-    paintLabels();
-    linkSel.each(function (d) {
-      const isHi = focus !== null && (endId(d.source) === focus || endId(d.target) === focus);
-      select(this)
-        .classed(styles.hi, isHi)
-        .classed(styles.dim, focus !== null && !isHi)
-        .attr('marker-end', isHi ? markerHiUrl : markerUrl);
-    });
-
-    nodeLayer.selectAll(`.${styles.labelPill}`).remove();
-    if (focus === null) return;
-    nodeSel
-      .filter((d) => d.id === focus)
-      .each(function () {
-        // Moving a focused element in the DOM drops keyboard focus.
-        if (this !== document.activeElement) select(this).raise();
-        const text = this.querySelector('text');
-        if (!text) return;
-        const box = text.getBBox();
-        select(this)
-          .insert('rect', 'text')
-          .attr('class', styles.labelPill)
-          .attr('x', box.x - PILL_PAD_X)
-          .attr('y', box.y - PILL_PAD_Y)
-          .attr('width', box.width + 2 * PILL_PAD_X)
-          .attr('height', box.height + 2 * PILL_PAD_Y)
-          .attr('rx', PILL_RADIUS);
-      });
+    return { sel, focus: hov ?? sel };
   }
 
-  // Labels-only pass (POC `paintLabels`): focus + neighbours and matches
-  // always; "All" is a root class; "Smart" adds hubs, or everything when zoomed
-  // in or the graph is small. No link or pill work here.
+  function nearOf(focus: string | null): Set<string> {
+    if (focus === null) return new Set();
+    return new Set([focus, ...(neighbours.get(focus) ?? [])]);
+  }
+
+  function setLinkHi(edge: number, isHi: boolean) {
+    const el = linkEls.get(edge);
+    if (!el || el.classList.contains(styles.hi) === isHi) return;
+    el.classList.toggle(styles.hi, isHi);
+    el.setAttribute('marker-end', isHi ? markerHiUrl : markerUrl);
+  }
+
+  function schedulePaint() {
+    if (paintFrame !== null || destroyed) return;
+    paintFrame = requestAnimationFrame(() => {
+      paintFrame = null;
+      paint();
+    });
+  }
+
+  function cancelPaintFrame() {
+    if (paintFrame !== null) cancelAnimationFrame(paintFrame);
+    paintFrame = null;
+  }
+
+  // Focus or selection change: touches only the nodes and links whose state
+  // changed since the last paint, O(degree).
+  function paint() {
+    cancelPaintFrame();
+    if (destroyed) return;
+    const { sel, focus } = currentFocus();
+    if (sel !== paintedSel) {
+      if (paintedSel !== null) nodeEls.get(paintedSel)?.g.classList.remove(styles.selected);
+      if (sel !== null) nodeEls.get(sel)?.g.classList.add(styles.selected);
+      paintedSel = sel;
+    }
+    const focusChanged = focus !== paintedFocus;
+    if (focusChanged) {
+      if (paintedFocus !== null) nodeEls.get(paintedFocus)?.g.classList.remove(styles.focused);
+      if (focus !== null) nodeEls.get(focus)?.g.classList.add(styles.focused);
+      const near = nearOf(focus);
+      const { added, removed } = diffSets(focusSet, near);
+      for (const id of removed) nodeEls.get(id)?.g.classList.remove(styles.near);
+      for (const id of added) nodeEls.get(id)?.g.classList.add(styles.near);
+      focusSet = near;
+      if (labelMode === 'smart' && (scale >= SMART_MIN_SCALE) !== wasSmartScale) {
+        paintLabels();
+      } else {
+        for (const id of removed) paintLabel(id);
+        for (const id of added) paintLabel(id);
+      }
+      const hi = new Set(focus !== null ? (incident.get(focus) ?? []) : []);
+      const links = diffSets(hiEdges, hi);
+      for (const edge of links.removed) setLinkHi(edge, false);
+      for (const edge of links.added) setLinkHi(edge, true);
+      hiEdges = hi;
+      svg.classed(styles.focusing, focus !== null);
+      paintedFocus = focus;
+    }
+    placePill(focus, focusChanged);
+  }
+
+  // Every node and link: after a join (new elements, new radii) and a query change.
+  function paintAll() {
+    cancelPaintFrame();
+    if (destroyed) return;
+    const { sel, focus } = currentFocus();
+    const near = nearOf(focus);
+    const hasQuery = matchIds.size > 0;
+    for (const n of visibleNodes) {
+      const cl = nodeEls.get(n.id)?.g.classList;
+      if (!cl) continue;
+      cl.toggle(styles.selected, n.id === sel);
+      cl.toggle(styles.focused, n.id === focus);
+      cl.toggle(styles.near, near.has(n.id));
+      cl.toggle(styles.dim, hasQuery && !matchIds.has(n.id));
+    }
+    focusSet = near;
+    paintLabels();
+    hiEdges = new Set(focus !== null ? (incident.get(focus) ?? []) : []);
+    for (const l of visibleLinks) setLinkHi(l.edge, hiEdges.has(l.edge));
+    svg.classed(styles.focusing, focus !== null);
+    paintedSel = sel;
+    paintedFocus = focus;
+    placePill(focus, true);
+  }
+
+  // One pill element, moved to the focused node and measured only when the
+  // focus or the label geometry changed.
+  let pill: SVGRectElement | null = null;
+  function placePill(focus: string | null, remeasure: boolean) {
+    const e = focus !== null ? nodeEls.get(focus) : undefined;
+    if (!e || !e.label) {
+      pill?.remove();
+      return;
+    }
+    // Moving a focused element in the DOM drops keyboard focus.
+    if (e.g !== document.activeElement) select(e.g).raise();
+    if (!remeasure && pill?.parentNode === e.g) return;
+    if (!pill) {
+      pill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      pill.setAttribute('class', styles.labelPill);
+      pill.setAttribute('rx', String(PILL_RADIUS));
+    }
+    e.g.insertBefore(pill, e.label);
+    const box = e.label.getBBox();
+    pill.setAttribute('x', String(box.x - PILL_PAD_X));
+    pill.setAttribute('y', String(box.y - PILL_PAD_Y));
+    pill.setAttribute('width', String(box.width + 2 * PILL_PAD_X));
+    pill.setAttribute('height', String(box.height + 2 * PILL_PAD_Y));
+  }
+
+  // Labels: focus + neighbours and matches always; "All" is a root class;
+  // "Smart" adds hubs, or everything when zoomed in or the graph is small.
+  function labelOn(n: SimNode): boolean {
+    const isSmart = labelMode === 'smart';
+    const isSmartAll = isSmart && (wasSmartScale || visibleNodes.length <= SMART_MAX_NODES);
+    return (
+      focusSet.has(n.id) ||
+      matchIds.has(n.id) ||
+      (isSmart && (isSmartAll || n.degree >= SMART_MIN_DEGREE))
+    );
+  }
+
+  function paintLabel(id: string) {
+    const n = nodeById.get(id);
+    const el = nodeEls.get(id)?.g;
+    if (!n || !el || !visibleIds.has(id)) return;
+    const on = labelOn(n);
+    el.classList.toggle(styles.show, on);
+    if (on) shownIds.add(id);
+    else shownIds.delete(id);
+  }
+
+  // Labels-only pass over every node. No link or pill work here.
   function paintLabels() {
     if (destroyed) return;
-    const isSmart = labelMode === 'smart';
     wasSmartScale = scale >= SMART_MIN_SCALE;
-    const isSmartAll = isSmart && (wasSmartScale || visibleNodes.length <= SMART_MAX_NODES);
     const shown = new Set<string>();
-    nodeSel.classed(styles.show, (d) => {
-      const on =
-        focusSet.has(d.id) ||
-        matchIds.has(d.id) ||
-        (isSmart && (isSmartAll || d.degree >= SMART_MIN_DEGREE));
-      if (on) shown.add(d.id);
-      return on;
-    });
+    for (const n of visibleNodes) {
+      const el = nodeEls.get(n.id)?.g;
+      if (!el) continue;
+      const on = labelOn(n);
+      el.classList.toggle(styles.show, on);
+      if (on) shown.add(n.id);
+    }
     shownIds = shown;
   }
 
@@ -533,7 +662,27 @@ export function renderGraph(
     };
   }
 
-  function draw() {
+  interface Box {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  }
+
+  // Grows `box` by a visible node's extents, its label included when shown.
+  function extendBox(box: Box, n: SimNode) {
+    const b = nodeBox(n, labelShown(n.id));
+    box.x0 = Math.min(box.x0, b.x0);
+    box.x1 = Math.max(box.x1, b.x1);
+    box.y0 = Math.min(box.y0, b.y0);
+    box.y1 = Math.max(box.y1, b.y1);
+  }
+
+  const emptyBox = (): Box => ({ x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity });
+
+  // Moves links and nodes; with `withBox`, also returns the fit box from the
+  // same pass over the nodes (the camera follow reads it every tick).
+  function draw(withBox = false): Box | null {
     linkSel.each(function (d) {
       const s = d.source;
       const t = d.target;
@@ -552,7 +701,12 @@ export function renderGraph(
       this.setAttribute('x2', String(tx - (dx / len) * endOff));
       this.setAttribute('y2', String(ty - (dy / len) * endOff));
     });
-    nodeSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
+    const box = withBox ? emptyBox() : null;
+    for (const n of visibleNodes) {
+      nodeEls.get(n.id)?.g.setAttribute('transform', `translate(${n.x ?? 0},${n.y ?? 0})`);
+      if (box) extendBox(box, n);
+    }
+    return box;
   }
 
   const zoomBehavior = zoom<SVGSVGElement, unknown>()
@@ -581,22 +735,18 @@ export function renderGraph(
       : zoomIdentity,
   );
 
-  // Transform that fits the visible nodes in the viewport; null when there is nothing to fit.
-  function fitTransform(): ZoomTransform | null {
+  // Transform that fits the visible nodes in the viewport (or a box already
+  // computed over them); null when there is nothing to fit.
+  function fitTransform(fromBox?: Box | null): ZoomTransform | null {
     const w = svgEl.clientWidth;
     const h = svgEl.clientHeight;
     if (!w || !h || visibleNodes.length === 0) return null;
-    let x0 = Infinity;
-    let y0 = Infinity;
-    let x1 = -Infinity;
-    let y1 = -Infinity;
-    for (const n of visibleNodes) {
-      const b = nodeBox(n, labelShown(n.id));
-      x0 = Math.min(x0, b.x0);
-      x1 = Math.max(x1, b.x1);
-      y0 = Math.min(y0, b.y0);
-      y1 = Math.max(y1, b.y1);
+    let box = fromBox;
+    if (!box) {
+      box = emptyBox();
+      for (const n of visibleNodes) extendBox(box, n);
     }
+    const { x0, y0, x1, y1 } = box;
     const bw = Math.max(1, x1 - x0);
     const bh = Math.max(1, y1 - y0);
     const availW = Math.max(1, w - 2 * FIT_PADDING);
@@ -630,18 +780,14 @@ export function renderGraph(
     if (!n || !w || !h) return null;
     const nx = n.x ?? 0;
     const ny = n.y ?? 0;
-    // Neighbours = the other end of a visible link (same rule as paint()).
+    // Neighbours from the adjacency index (same rule as paint()).
     // Half-extents around the centred node, labels included: the focus and
     // its neighbours always get a label once selected (focusSet).
     const self = nodeBox(n, true);
     let halfW = Math.max(nx - self.x0, self.x1 - nx);
     let halfH = Math.max(ny - self.y0, self.y1 - ny);
     let hasNeighbour = false;
-    for (const l of visibleLinks) {
-      const s = endId(l.source);
-      const t = endId(l.target);
-      const other = s === id ? t : t === id ? s : null;
-      if (other === null || other === id) continue;
+    for (const other of neighbours.get(id) ?? []) {
       const o = nodeById.get(other);
       if (!o) continue;
       hasNeighbour = true;
@@ -673,8 +819,8 @@ export function renderGraph(
 
   // One step of the camera follow: ease the current transform toward the
   // focus box when there is a focus target, else toward the fit.
-  function followStep() {
-    const target = focusTarget !== null ? focusTransform(focusTarget) : fitTransform();
+  function followStep(box: Box | null) {
+    const target = focusTarget !== null ? focusTransform(focusTarget) : fitTransform(box);
     if (!target) return;
     const cur = zoomTransform(svgEl);
     const k = cur.k + (target.k - cur.k) * FOLLOW_EASE;
@@ -742,14 +888,14 @@ export function renderGraph(
 
   simulation
     .on('tick', () => {
-      draw();
+      const box = draw(follow && focusTarget === null && !userMoved);
       if (!follow) return;
       if (focusTarget === null && userMoved) {
         follow = false;
         return;
       }
       // Until `end`, so the final glide only corrects a small residue.
-      followStep();
+      followStep(box);
     })
     .on('end', () => {
       const mode = fitOnEnd;
@@ -810,7 +956,7 @@ export function renderGraph(
     });
 
   join(visibleNodes, visibleLinks, lastApplied.contextIds);
-  paint();
+  paintAll();
 
   if (visibleNodes.length > 0) {
     if (initialPositions) {
@@ -851,7 +997,7 @@ export function renderGraph(
       // A removed node never fires mouseleave.
       if (hoveredId !== null && !visibleIds.has(hoveredId)) hoveredId = null;
       if (focusTarget !== null && !visibleIds.has(focusTarget)) focusTarget = null;
-      paint();
+      paintAll();
 
       const reframing = reframePending;
       reframePending = false;
@@ -922,7 +1068,7 @@ export function renderGraph(
     setQuery(next: ReadonlySet<string>) {
       if (destroyed || sameSet(next, matchIds)) return;
       matchIds = new Set(next);
-      paint();
+      paintAll();
     },
     zoomBy(factor: number) {
       if (destroyed) return;
@@ -1020,6 +1166,7 @@ export function renderGraph(
       holdPending = false;
       if (holdFrame !== null) cancelAnimationFrame(holdFrame);
       holdFrame = null;
+      cancelPaintFrame();
       hoveredId = null;
       selectedId = null;
       pendingReheat.clear();
@@ -1037,7 +1184,14 @@ export function renderGraph(
       // Stops a running focusOn transition before the SVG is cleared.
       svg.interrupt();
       svg.selectAll('*').remove();
-      svg.classed(styles.root, false).classed(styles.labelsAll, false).classed(styles.labelsFocus, false);
+      nodeEls.clear();
+      linkEls.clear();
+      pill = null;
+      svg
+        .classed(styles.root, false)
+        .classed(styles.labelsAll, false)
+        .classed(styles.labelsFocus, false)
+        .classed(styles.focusing, false);
     },
   };
 }

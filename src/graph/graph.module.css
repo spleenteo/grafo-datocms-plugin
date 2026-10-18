@@ -64,12 +64,15 @@
   stroke-opacity: 0.9;
 }
 
-.link.dim {
+/* With a focus (`focusing` on the root) everything but its links and its
+   focus + neighbours (`near`) dims; without one, search misses (`dim`) do. */
+.focusing .link:not(.hi) {
   opacity: 0.12;
   stroke-opacity: 1;
 }
 
-.node.dim {
+.focusing .node:not(.near),
+.root:not(.focusing) .node.dim {
   opacity: 0.12;
 }
 
@@ -94,7 +97,8 @@
   stroke-dasharray: none;
 }
 
-.node.dim:focus-visible,
+.focusing .node:not(.near):focus-visible,
+.root:not(.focusing) .node.dim:focus-visible,
 .node.ctx:focus-visible {
   opacity: 1;
 }
