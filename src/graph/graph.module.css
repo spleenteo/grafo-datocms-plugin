@@ -136,3 +136,12 @@
   fill: var(--color--ink);
   pointer-events: none;
 }
+
+/* Label modes: "All" shows every label; "On focus" only what paint() marks. */
+.labelsAll .node .label {
+  display: inline;
+}
+
+.labelsFocus .node:not(.show) .label {
+  display: none;
+}

@@ -18,10 +18,36 @@ import styles from './graph.module.css';
 import { modelColor } from './modelColor';
 import type { prepareSimulation, SimLink, SimNode } from './prepareSimulation';
 
+export type LabelMode = 'smart' | 'all' | 'focus';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface ViewTransform {
+  x: number;
+  y: number;
+  k: number;
+}
+
+export interface ViewState {
+  transform: ViewTransform;
+  userMoved: boolean;
+}
+
 export interface RenderGraphOptions {
   modelName: (model: number) => string;
   /** Node click or Enter/Space → its id; background click → null. The renderer does not change its own selection. */
   onSelect: (id: string | null) => void;
+  /** Initial view state, applied at mount without reheating. */
+  labelMode?: LabelMode;
+  distance?: number;
+  matchIds?: ReadonlySet<string>;
+  /** Seeded mount (refresh): with positions the mount skips the pre-tick and the initial fit and settles at a low alpha. */
+  initialPositions?: ReadonlyMap<string, Point>;
+  initialTransform?: ViewTransform;
+  initialUserMoved?: boolean;
 }
 
 export interface RenderGraphHandle {
@@ -31,6 +57,21 @@ export interface RenderGraphHandle {
   setSelection(id: string | null): void;
   /** Centres a visible node at scale max(current, 1.2), no transition; a no-op for an id not visible. */
   focusOn(id: string): void;
+  /** No-op when the mode does not change. Never reheats. */
+  setLabelMode(mode: LabelMode): void;
+  /** Search matches: labelled, and the rest dimmed when nothing has focus. An empty set clears. No-op when the content is unchanged. */
+  setQuery(matchIds: ReadonlySet<string>): void;
+  /** +/− buttons: an explicit user zoom, so it sets `userMoved`. */
+  zoomBy(factor: number): void;
+  /** Fits the visible nodes and resets `userMoved`. */
+  fit(): void;
+  /** Random restart of the layout, then fit; resets `userMoved`. */
+  relayout(): void;
+  /** Node distance multiplier; reheats at alpha 0.9. No-op when the value does not change. */
+  setDistance(d: number): void;
+  /** x/y of every node known to this mount, visible or not. */
+  positions(): Map<string, Point>;
+  viewState(): ViewState;
   destroy(): void;
 }
 
@@ -48,6 +89,17 @@ const LABEL_MAX = 30;
 const PILL_PAD_X = 6;
 const PILL_PAD_Y = 3;
 const PILL_RADIUS = 4;
+const DISTANCE_ALPHA = 0.9;
+const RELAYOUT_SPREAD = 30;
+const SMART_MIN_DEGREE = 10;
+const SMART_MIN_SCALE = 1.8;
+const SMART_MAX_NODES = 45;
+
+function sameIdSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const id of a) if (!b.has(id)) return false;
+  return true;
+}
 
 function labelText(title: string): string {
   const chars = Array.from(title);
@@ -61,7 +113,7 @@ export function renderGraph(
   data: ReturnType<typeof prepareSimulation>,
   options: RenderGraphOptions,
 ): RenderGraphHandle {
-  const { modelName, onSelect } = options;
+  const { modelName, onSelect, initialPositions, initialTransform } = options;
 
   // Own copies: d3 writes x/y/vx/vy on nodes and swaps link ends for objects,
   // so a second mount (StrictMode) or re-render never sees mutated input.
@@ -94,12 +146,47 @@ export function renderGraph(
   }
   const allLinks: RenderLink[] = [...linkByEdge.values()];
 
+  // Seeded nodes keep their old place; a node new to this mount starts next
+  // to a seeded neighbour (or where d3 would put it when it has none). Runs
+  // before the simulation initialises the nodes.
+  if (initialPositions) seedPositions(initialPositions);
+  function seedPositions(seed: ReadonlyMap<string, Point>) {
+    for (const n of allNodes) {
+      const p = seed.get(n.id);
+      if (p) {
+        n.x = p.x;
+        n.y = p.y;
+      }
+    }
+    for (const l of data.links) {
+      const s = nodeById.get(endId(l.source));
+      const t = nodeById.get(endId(l.target));
+      if (!s || !t) continue;
+      const [seeded, fresh] = s.x !== undefined ? [s, t] : [t, s];
+      if (seeded.x === undefined || seeded.y === undefined || fresh.x !== undefined) continue;
+      fresh.x = seeded.x + (Math.random() - 0.5) * 20;
+      fresh.y = seeded.y + (Math.random() - 0.5) * 20;
+    }
+  }
+
   // Mutable render state: reassigned on every update, read by draw/fit.
   let visibleNodes: SimNode[] = allNodes;
   let visibleLinks: RenderLink[] = allLinks;
   let visibleIds = new Set(allNodes.map((n) => n.id));
   let selectedId: string | null = null;
   let hoveredId: string | null = null;
+  let labelMode: LabelMode = options.labelMode ?? 'smart';
+  let distance = options.distance ?? 1;
+  let matchIds: ReadonlySet<string> = new Set(options.matchIds ?? []);
+  // Set by user wheel/drag on the canvas and by zoomBy; never by fit, focusOn
+  // or other programmatic transforms. When set, settles don't fit on `end`.
+  let userMoved = options.initialUserMoved ?? false;
+  let scale = 1;
+  // Focus + neighbours from the last paint(); read by the labels-only pass.
+  let focusSet = new Set<string>();
+  // Last smart threshold on zoom, so a zoom only repaints labels when crossing it.
+  let wasSmartScale = false;
+  let destroyed = false;
   let lastApplied: VisibleSet = {
     coreIds: new Set(allNodes.map((n) => n.id)),
     contextIds: new Set(),
@@ -109,6 +196,11 @@ export function renderGraph(
   const svg = select(svgEl);
   svg.selectAll('*').remove();
   svg.classed(styles.root, true);
+  applyLabelModeClass();
+
+  function applyLabelModeClass() {
+    svg.classed(styles.labelsAll, labelMode === 'all').classed(styles.labelsFocus, labelMode === 'focus');
+  }
 
   const markerPrefix = `cg-${++markerSeq}`;
   const defs = svg.append('defs');
@@ -232,11 +324,15 @@ export function renderGraph(
         if (t === focus) neighbours.add(s);
       }
     }
+    const hasQuery = matchIds.size > 0;
     nodeSel
       .classed(styles.selected, (d) => d.id === sel)
       .classed(styles.focused, (d) => d.id === focus)
-      .classed(styles.dim, (d) => focus !== null && !neighbours.has(d.id))
-      .classed(styles.show, (d) => focus !== null && neighbours.has(d.id));
+      .classed(styles.dim, (d) =>
+        focus !== null ? !neighbours.has(d.id) : hasQuery && !matchIds.has(d.id),
+      );
+    focusSet = neighbours;
+    paintLabels();
     linkSel.each(function (d) {
       const isHi = focus !== null && (endId(d.source) === focus || endId(d.target) === focus);
       select(this)
@@ -266,6 +362,23 @@ export function renderGraph(
       });
   }
 
+  // Labels-only pass (POC `paintLabels`): focus + neighbours and matches
+  // always; "All" is a root class; "Smart" adds hubs, or everything when zoomed
+  // in or the graph is small. No link or pill work here.
+  function paintLabels() {
+    if (destroyed) return;
+    const isSmart = labelMode === 'smart';
+    wasSmartScale = scale >= SMART_MIN_SCALE;
+    const isSmartAll = isSmart && (wasSmartScale || visibleNodes.length <= SMART_MAX_NODES);
+    nodeSel.classed(
+      styles.show,
+      (d) =>
+        focusSet.has(d.id) ||
+        matchIds.has(d.id) ||
+        (isSmart && (isSmartAll || d.degree >= SMART_MIN_DEGREE)),
+    );
+  }
+
   function draw() {
     linkSel.each(function (d) {
       const s = d.source;
@@ -292,6 +405,9 @@ export function renderGraph(
     .scaleExtent([0.1, 6])
     .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
       viewport.attr('transform', event.transform.toString());
+      scale = event.transform.k;
+      if (event.sourceEvent) userMoved = true;
+      if (labelMode === 'smart' && (scale >= SMART_MIN_SCALE) !== wasSmartScale) paintLabels();
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);
   // d3-zoom swallows the click that ends a pan, so this only fires on a plain
@@ -299,8 +415,14 @@ export function renderGraph(
   svg.on('click', () => {
     if (!destroyed) onSelect(null);
   });
-  // Reset any transform a previous mount left in the element's zoom state.
-  svg.call(zoomBehavior.transform, zoomIdentity);
+  // Reset any transform a previous mount left in the element's zoom state,
+  // or restore the one a refresh carried over.
+  svg.call(
+    zoomBehavior.transform,
+    initialTransform
+      ? zoomIdentity.translate(initialTransform.x, initialTransform.y).scale(initialTransform.k)
+      : zoomIdentity,
+  );
 
   function fit() {
     const w = svgEl.clientWidth;
@@ -330,27 +452,37 @@ export function renderGraph(
 
   const linkForce = forceLink<SimNode, RenderLink>(allLinks)
     .id((d) => d.id)
-    .distance(40)
     .strength(0.55);
+  const chargeForce = forceManyBody<SimNode>();
+  const xForce = forceX<SimNode>(0);
+  const yForce = forceY<SimNode>(0);
+  const collideForce = forceCollide<SimNode>();
   const simulation = forceSimulation<SimNode, RenderLink>(allNodes)
     .force('link', linkForce)
-    .force(
-      'charge',
-      forceManyBody<SimNode>().strength((d) => -(70 + d.r * 9)),
-    )
-    .force('x', forceX<SimNode>(0).strength(0.05))
-    .force('y', forceY<SimNode>(0).strength(0.05))
-    .force(
-      'collide',
-      forceCollide<SimNode>((d) => d.r + 4),
-    )
+    .force('charge', chargeForce)
+    .force('x', xForce)
+    .force('y', yForce)
+    .force('collide', collideForce)
     .stop();
 
-  let fitOnEnd = false;
+  // Node distance D (POC `applyForces`): one multiplier for link length,
+  // repulsion, centring and collision padding.
+  function applyForces() {
+    const D = distance;
+    linkForce.distance(40 * D);
+    chargeForce.strength((d) => -(70 + d.r * 9) * D);
+    xForce.strength(0.05 / Math.max(D, 0.6));
+    yForce.strength(0.05 / Math.max(D, 0.6));
+    collideForce.radius((d) => d.r + 2 + 2 * D);
+  }
+  applyForces();
+
+  // 'unlessMoved': settles started by update/distance; 'always': animated relayout.
+  let fitOnEnd: 'none' | 'unlessMoved' | 'always' = 'none';
   simulation.on('tick', draw).on('end', () => {
-    if (!fitOnEnd) return;
-    fitOnEnd = false;
-    fit();
+    const mode = fitOnEnd;
+    fitOnEnd = 'none';
+    if (mode === 'always' || (mode === 'unlessMoved' && !userMoved)) fit();
   });
 
   // Drag (POC pattern on `event.active`): pin on `start`, reheat on the first
@@ -359,7 +491,6 @@ export function renderGraph(
   // `active` during `drag` (but not during `start`/`end`), so "no other
   // gesture" is `active === 1` there. d3-drag suppresses the click after a
   // real drag.
-  let destroyed = false;
   const pendingReheat = new Set<SimNode>();
   const dragBehavior = drag<SVGGElement, SimNode>()
     .on('start', (_event: D3DragEvent<SVGGElement, SimNode, SimNode>, d) => {
@@ -388,13 +519,15 @@ export function renderGraph(
   paint();
 
   if (allNodes.length > 0) {
-    if (allNodes.length <= PRETICK_MAX_NODES) {
+    if (initialPositions) {
+      simulation.alpha(UPDATE_ALPHA).restart();
+    } else if (allNodes.length <= PRETICK_MAX_NODES) {
       simulation.alpha(1);
       simulation.tick(PRETICKS);
       draw();
       fit();
     } else {
-      fitOnEnd = true;
+      fitOnEnd = 'unlessMoved';
       simulation.alpha(1).restart();
     }
   }
@@ -429,12 +562,12 @@ export function renderGraph(
       paint();
 
       if (visibleNodes.length === 0) {
-        fitOnEnd = false;
+        fitOnEnd = 'none';
         simulation.stop();
         return;
       }
       draw();
-      fitOnEnd = true;
+      fitOnEnd = 'unlessMoved';
       simulation.alpha(UPDATE_ALPHA).restart();
     },
     setSelection(id: string | null) {
@@ -456,6 +589,73 @@ export function renderGraph(
         zoomIdentity.translate(w / 2 - k * (n.x ?? 0), h / 2 - k * (n.y ?? 0)).scale(k),
       );
     },
+    setLabelMode(mode: LabelMode) {
+      if (destroyed || mode === labelMode) return;
+      labelMode = mode;
+      applyLabelModeClass();
+      paintLabels();
+    },
+    setQuery(next: ReadonlySet<string>) {
+      if (destroyed || sameIdSet(next, matchIds)) return;
+      matchIds = new Set(next);
+      paint();
+    },
+    zoomBy(factor: number) {
+      if (destroyed) return;
+      userMoved = true;
+      svg.call(zoomBehavior.scaleBy, factor);
+    },
+    fit() {
+      if (destroyed) return;
+      userMoved = false;
+      fit();
+    },
+    relayout() {
+      if (destroyed) return;
+      simulation.stop();
+      fitOnEnd = 'none';
+      userMoved = false;
+      if (visibleNodes.length === 0) return;
+      for (const n of allNodes) {
+        n.fx = null;
+        n.fy = null;
+      }
+      for (const n of visibleNodes) {
+        n.x = (Math.random() - 0.5) * 2 * RELAYOUT_SPREAD;
+        n.y = (Math.random() - 0.5) * 2 * RELAYOUT_SPREAD;
+        n.vx = 0;
+        n.vy = 0;
+      }
+      simulation.alpha(1);
+      if (visibleNodes.length <= PRETICK_MAX_NODES) {
+        simulation.tick(PRETICKS);
+        draw();
+        fit();
+      } else {
+        draw();
+        fitOnEnd = 'always';
+        simulation.restart();
+      }
+    },
+    setDistance(d: number) {
+      if (destroyed || d === distance) return;
+      distance = d;
+      applyForces();
+      if (visibleNodes.length === 0) return;
+      fitOnEnd = 'unlessMoved';
+      simulation.alpha(DISTANCE_ALPHA).restart();
+    },
+    positions() {
+      const out = new Map<string, Point>();
+      for (const n of allNodes) {
+        if (n.x !== undefined && n.y !== undefined) out.set(n.id, { x: n.x, y: n.y });
+      }
+      return out;
+    },
+    viewState() {
+      const t = zoomTransform(svgEl);
+      return { transform: { x: t.x, y: t.y, k: t.k }, userMoved };
+    },
     destroy() {
       destroyed = true;
       hoveredId = null;
@@ -476,7 +676,7 @@ export function renderGraph(
       // imports; no transitions are started here, this is belt and braces.
       (svg as unknown as { interrupt?: () => void }).interrupt?.();
       svg.selectAll('*').remove();
-      svg.classed(styles.root, false);
+      svg.classed(styles.root, false).classed(styles.labelsAll, false).classed(styles.labelsFocus, false);
     },
   };
 }
