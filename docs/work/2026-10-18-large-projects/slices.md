@@ -67,3 +67,10 @@ Open questions for the owner before planning:
 - Auto-filters: hide models below X records, hide orphans by default when they are more than half the graph (Acacia: 51%).
 - "Expand neighbourhood" as the main way to grow the view, "Show everything" as an explicit action with a warning.
 - Clustering (collapse a model to one node) left for later.
+
+### V1 — done on 2026-10-18
+
+- Hover intent (150 ms, both directions), hover without dimming above 600 visible nodes, labels at constant screen size above k = 1 via one `--label-k` variable, Smart budget of 40 by degree in view.
+- Two crashes found only in the browser: `follow` read before its `let` (the mount's zoom fires `end` synchronously), and `selectAll('g')` matching the new nested label groups, which exited them as duplicates and dropped nodes from the element map. Both reproduced afterwards in a headless harness with the Acacia graph (`.superpowers/lp/`, ignored).
+- Parked: the budget pass before an end-of-settle fit is wasted; a hidden pane gives an empty budget until the next zoom.
+- Left for later (owner to confirm): strokes and arrows still scale with zoom; every neighbour of the selection is labelled (65 on Cosmea), which piles up.

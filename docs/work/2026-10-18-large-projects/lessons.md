@@ -1,0 +1,4 @@
+- The renderer has no tests: after any change to `renderGraph.ts`, run the headless harness (`.superpowers/lp/harness.html` + `shoot*.mjs`, Acacia data) before handing over: mount, select, filter (update), zoom.
+- d3 joins: select direct children (`selectChildren`) when the joined elements contain elements of the same tag; nested children inherit the datum.
+- d3-zoom fires `start/zoom/end` synchronously on `zoom.transform`: every variable its handlers read must be declared before the first `svg.call(zoom.transform, …)`.
+- d3-drag stops `mousedown` propagation on draggable nodes: listen on the svg (`pointerdown`) for anything that must see every press.
