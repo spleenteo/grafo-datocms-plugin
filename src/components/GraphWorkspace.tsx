@@ -133,6 +133,8 @@ export default function GraphWorkspace({
     () => new Set([...visible.coreIds, ...visible.contextIds]),
     [visible],
   );
+  const visibleIdsRef = useRef(visibleIds);
+  visibleIdsRef.current = visibleIds;
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
 
@@ -201,7 +203,10 @@ export default function GraphWorkspace({
   // and the collapse that follows keeps the camera where it is.
   const selectNode = useCallback((id: string | null) => {
     if (id === null) viewRef.current?.holdView();
-    else viewRef.current?.focusOn(id);
+    // A record not drawn yet (picked from the search on an empty canvas) has
+    // nothing to focus: the expansion's settle frames it, even after a zoom.
+    else if (visibleIdsRef.current.has(id)) viewRef.current?.focusOn(id);
+    else viewRef.current?.reframe();
     setSelectedId(id);
   }, []);
 
