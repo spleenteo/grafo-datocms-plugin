@@ -5,8 +5,9 @@ import type {
   GraphField,
   GraphModel,
   GraphNode,
-  NodeStatus, 
+  NodeStatus,
   RawItem,
+  RawRecord,
   Schema,
   SchemaItemType,
 } from './types';
@@ -25,21 +26,29 @@ function firstNonEmpty(value: unknown, locales: string[]): string {
   return '';
 }
 
-function titleOf(item: RawItem, itemType: SchemaItemType, locales: string[]): string {
+function fieldValues(item: RawRecord): Record<string, unknown> {
+  return item;
+}
+
+function titleOf(item: RawRecord, itemType: SchemaItemType, locales: string[]): string {
   if (itemType.titleFieldApiKey) {
-    const raw = (item as unknown as Record<string, unknown>)[itemType.titleFieldApiKey];
+    const raw = fieldValues(item)[itemType.titleFieldApiKey];
     const title = firstNonEmpty(raw, locales);
     if (title) return title;
   }
   return `Untitled ${itemType.name}`;
 }
 
-function statusOf(item: RawItem): NodeStatus {
+function statusOf(item: RawRecord): NodeStatus {
   const status = item.meta?.status as string | null | undefined;
   return status === 'draft' || status === 'updated' ? status : 'published';
 }
 
-export function buildGraph(schema: Schema, items: RawItem[], blocks: RawItem[]): Graph {
+/**
+ * `items`: records from a flat listing (block fields hold IDs, resolved through
+ * `blocks`) or from a `nested: true` listing (blocks inline, `blocks` empty).
+ */
+export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]): Graph {
   const blocksById = new Map(blocks.map((b) => [b.id, b]));
   const lookup = { schema, blocksById };
 
@@ -53,7 +62,7 @@ export function buildGraph(schema: Schema, items: RawItem[], blocks: RawItem[]):
 
   const nodes: GraphNode[] = [];
   const nodeIndex = new Map<string, number>();
-  const kept: { item: RawItem; itemType: SchemaItemType }[] = [];
+  const kept: { item: RawRecord; itemType: SchemaItemType }[] = [];
   for (const item of items) {
     const itemType = schema.itemTypes.get(item.item_type.id);
     if (!itemType || itemType.isBlock) continue;
@@ -93,7 +102,7 @@ export function buildGraph(schema: Schema, items: RawItem[], blocks: RawItem[]):
   };
 
   kept.forEach(({ item, itemType }, source) => {
-    const values = item as unknown as Record<string, unknown>;
+    const values = fieldValues(item);
     for (const link of extractLinks(itemType, values, lookup)) {
       const target = nodeIndex.get(link.targetId);
       if (target === undefined) continue;

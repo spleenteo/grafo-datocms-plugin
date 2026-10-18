@@ -20,22 +20,58 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function visitBlock(blockId: unknown, c: Collector): void {
-  if (typeof blockId !== 'string' || c.visitedBlocks.has(blockId)) return;
-  const block = c.lookup.blocksById.get(blockId);
-  if (!block) return;
-  c.visitedBlocks.add(blockId);
-  const blockType = c.lookup.schema.itemTypes.get(block.item_type.id);
+type ResolvedBlock = { id: string; itemTypeId: string; values: Record<string, unknown> };
+
+function idOf(value: unknown): string | null {
+  if (isObject(value) && typeof value.id === 'string') return value.id;
+  return null;
+}
+
+/**
+ * Item type of an inline block from a `nested: true` listing:
+ * `relationships.item_type.data.id`, else `__itemTypeId`, else a flattened `item_type.id`.
+ */
+function inlineItemTypeId(block: Record<string, unknown>): string | null {
+  const relationships = block.relationships;
+  if (isObject(relationships) && isObject(relationships.item_type)) {
+    const id = idOf(relationships.item_type.data);
+    if (id !== null) return id;
+  }
+  if (typeof block.__itemTypeId === 'string') return block.__itemTypeId;
+  return idOf(block.item_type);
+}
+
+/** A block reference is a block ID (flat listing) or an inline block object (nested listing). */
+function resolveBlock(ref: unknown, lookup: ExtractLookup): ResolvedBlock | null {
+  if (typeof ref === 'string') {
+    const block = lookup.blocksById.get(ref);
+    if (!block) return null;
+    const values: Record<string, unknown> = block;
+    return { id: ref, itemTypeId: block.item_type.id, values };
+  }
+  if (!isObject(ref) || typeof ref.id !== 'string') return null;
+  const itemTypeId = inlineItemTypeId(ref);
+  if (itemTypeId === null) return null;
+  const values = isObject(ref.attributes) ? ref.attributes : ref;
+  return { id: ref.id, itemTypeId, values };
+}
+
+function visitBlock(ref: unknown, c: Collector): void {
+  const block = resolveBlock(ref, c.lookup);
+  if (!block || c.visitedBlocks.has(block.id)) return;
+  c.visitedBlocks.add(block.id);
+  const blockType = c.lookup.schema.itemTypes.get(block.itemTypeId);
   if (!blockType) return;
-  collectFields(blockType, block as unknown as Record<string, unknown>, c);
+  collectFields(blockType, block.values, c);
 }
 
 function walkDast(node: unknown, c: Collector): void {
   if (!isObject(node)) return;
   const type = node.type;
   if (typeof type === 'string') {
-    if (STRUCTURED_LINK_TYPES.has(type) && typeof node.item === 'string') {
-      c.targets.add(node.item);
+    if (STRUCTURED_LINK_TYPES.has(type)) {
+      const target = typeof node.item === 'string' ? node.item : idOf(node.item);
+      if (target !== null) c.targets.add(target);
     } else if (STRUCTURED_BLOCK_TYPES.has(type)) {
       visitBlock(node.item, c);
     }

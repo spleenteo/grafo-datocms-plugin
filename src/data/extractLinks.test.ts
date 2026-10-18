@@ -124,4 +124,65 @@ describe('extractLinks', () => {
     const out = extractLinks(page, { hero: 'b1' }, lookupWith([b]));
     expect(out).toEqual([{ fieldApiKey: 'hero', targetId: 'x' }]);
   });
+
+  describe('nested listing (inline block objects)', () => {
+    const inline = (id: string, attributes: Record<string, unknown>) => ({
+      type: 'item',
+      id,
+      attributes,
+      relationships: { item_type: { data: { id: 'blockA', type: 'item_type' } } },
+      __itemTypeId: 'blockA',
+    });
+
+    it('follows an inline modular content block with a link', () => {
+      const out = extractLinks(
+        page,
+        { sections: [inline('b1', { ref: 'x1' }), inline('b2', { ref: null })] },
+        lookupWith([]),
+      );
+      expect(out).toEqual([{ fieldApiKey: 'sections', targetId: 'x1' }]);
+    });
+
+    it('follows a Structured Text block node holding an object with a nested inline block', () => {
+      const deep = inline('b2', { ref: 'deep-field' });
+      const outer = inline('b1', {
+        hero: deep,
+        inner: dast({ type: 'inlineBlock', item: inline('b3', { ref: 'deep-inline' }) }),
+      });
+      const out = extractLinks(page, { body: dast({ type: 'block', item: outer }) }, lookupWith([]));
+      expect(out).toHaveLength(2);
+      expect(out).toContainEqual({ fieldApiKey: 'body', targetId: 'deep-field' });
+      expect(out).toContainEqual({ fieldApiKey: 'body', targetId: 'deep-inline' });
+    });
+
+    it('reads itemLink and inlineItem whose item is an object', () => {
+      const body = dast({
+        type: 'paragraph',
+        children: [
+          { type: 'itemLink', item: { id: 's1', type: 'item' }, children: [] },
+          { type: 'inlineItem', item: 's2' },
+        ],
+      });
+      expect(extractLinks(page, { body }, lookupWith([]))).toEqual([
+        { fieldApiKey: 'body', targetId: 's1' },
+        { fieldApiKey: 'body', targetId: 's2' },
+      ]);
+    });
+
+    it('resolves the block type from __itemTypeId when relationships are absent', () => {
+      const out = extractLinks(
+        page,
+        { hero: { type: 'item', id: 'b1', __itemTypeId: 'blockA', attributes: { ref: 'x' } } },
+        lookupWith([]),
+      );
+      expect(out).toEqual([{ fieldApiKey: 'hero', targetId: 'x' }]);
+    });
+
+    it('skips inline blocks of unknown type and visits a repeated block once', () => {
+      const unknown = { ...inline('b9', { ref: 'nope' }), relationships: undefined, __itemTypeId: 'zzz' };
+      const b = inline('b1', { ref: 'x' });
+      const out = extractLinks(page, { sections: [unknown, b, b] }, lookupWith([]));
+      expect(out).toEqual([{ fieldApiKey: 'sections', targetId: 'x' }]);
+    });
+  });
 });

@@ -8,6 +8,8 @@ description: "Records and blocks are listed separately at 500 per page without `
 
 # Records and blocks are loaded without `nested`, in two flat listings
 
+Scope narrowed by 2026-10-18-nested-listing-for-restricted-roles: applies to full-read roles only.
+
 **Date**: 2026-10-18 · **Work**: `content-graph-plugin` · **Status**: active
 
 ## Context

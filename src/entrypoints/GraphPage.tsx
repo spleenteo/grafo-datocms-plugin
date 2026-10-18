@@ -1,9 +1,9 @@
 import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { Canvas, Spinner } from 'datocms-react-ui';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import GraphWorkspace from '../components/GraphWorkspace';
-import { loadGraph } from '../data/loadGraph';
+import { loadGraph, loadGraphKey } from '../data/loadGraph';
 import type { Graph } from '../data/types';
 import styles from './GraphPage.module.css';
 
@@ -27,13 +27,25 @@ function graphKey(graph: Graph): number {
 export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   const apiToken = ctx.currentUserAccessToken;
   const { environment, cmaBaseUrl: baseUrl } = ctx;
+  const permissions = ctx.currentRole.meta.final_permissions;
   const [state, setState] = useState<State>({ status: 'loading' });
+
+  // A new ctx brings a new permissions object with the same content: the effect
+  // depends on its string key, and reads the object through a ref.
+  const loadKey = useMemo(
+    () => loadGraphKey(environment, baseUrl, permissions),
+    [environment, baseUrl, permissions],
+  );
+  const permissionsRef = useRef(permissions);
+  useEffect(() => {
+    permissionsRef.current = permissions;
+  }, [permissions]);
 
   useEffect(() => {
     if (!apiToken) return;
     let cancelled = false;
     setState({ status: 'loading' });
-    loadGraph({ apiToken, environment, baseUrl })
+    loadGraph({ apiToken, environment, baseUrl, permissions: permissionsRef.current })
       .then(({ graph, requestCount }) => {
         if (!cancelled) setState({ status: 'done', graph, requestCount });
       })
@@ -48,7 +60,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     return () => {
       cancelled = true;
     };
-  }, [apiToken, environment, baseUrl]);
+  }, [apiToken, environment, baseUrl, loadKey]);
 
   const graph = state.status === 'done' ? state.graph : null;
 

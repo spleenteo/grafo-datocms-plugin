@@ -1,6 +1,11 @@
 import type { ApiTypes } from '@datocms/cma-client-browser';
 
+/** A record or block from a flat listing: block fields hold block IDs. */
 export type RawItem = ApiTypes.Item;
+/** A record from a `nested: true` listing: block fields hold inline block objects. */
+export type RawNestedItem = ApiTypes.ItemInNestedResponse;
+/** Either listing shape; `buildGraph` accepts both. */
+export type RawRecord = RawItem | RawNestedItem;
 
 export type SchemaField = {
   id: string;
