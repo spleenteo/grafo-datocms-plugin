@@ -57,12 +57,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     body = <Spinner placement="centered" />;
   } else if (state.status === 'error') {
     body = <p className={styles.error}>{state.message}</p>;
-  } else {
-    body = null;
-  }
-
-  const done = state.status === 'done' && apiToken && data;
-  if (done) {
+  } else if (graph && data) {
     return (
       <Canvas ctx={ctx} noAutoResizer>
         <div className={styles.fullPage}>
@@ -70,9 +65,8 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
           <div className={styles.stage}>
             <GraphView data={data} modelName={modelName} ctx={ctx} />
             <p className={styles.overlay}>
-              {state.graph.nodes.length} records · {state.graph.models.length}{' '}
-              models · {data.links.length} relations · {state.requestCount} CMA
-              requests
+              {graph.nodes.length} records · {graph.models.length} models ·{' '}
+              {data.links.length} relations · {state.requestCount} CMA requests
             </p>
           </div>
         </div>

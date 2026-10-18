@@ -30,7 +30,11 @@ export function prepareSimulation(graph: Graph): {
     if (e.source === e.target) continue;
     degrees[e.source]++;
     degrees[e.target]++;
-    links.push({ source: e.source, target: e.target, field: e.field });
+    links.push({
+      source: graph.nodes[e.source].id,
+      target: graph.nodes[e.target].id,
+      field: e.field,
+    });
   }
 
   const nodes: SimNode[] = graph.nodes.map((n, i) => ({

@@ -19,6 +19,10 @@ export interface RenderGraphOptions {
   onOpen: (node: SimNode) => void;
 }
 
+interface RenderLink extends SimLink {
+  key: string;
+}
+
 const PRETICK_MAX_NODES = 1000;
 const PRETICKS = 300;
 const FIT_PADDING = 40;
@@ -42,24 +46,28 @@ export function renderGraph(
 
   // Own copies: d3 writes x/y/vx/vy on nodes and swaps link ends for objects,
   // so a second mount (StrictMode) or re-render never sees mutated input.
-  const nodes: SimNode[] = data.nodes.map((n) => ({
-    id: n.id,
-    title: n.title,
-    itemTypeId: n.itemTypeId,
-    model: n.model,
-    status: n.status,
-    degree: n.degree,
-    r: n.r,
-  }));
-  const indexOf = new Map<SimNode, number>();
-  data.nodes.forEach((n, i) => indexOf.set(n, i));
-  const endIndex = (end: SimLink['source']): number =>
-    typeof end === 'object' ? (indexOf.get(end as SimNode) ?? -1) : Number(end);
-  const links: SimLink[] = data.links.map((l) => ({
-    source: endIndex(l.source),
-    target: endIndex(l.target),
-    field: l.field,
-  }));
+  const nodeById = new Map<string, SimNode>();
+  for (const n of data.nodes) {
+    nodeById.set(n.id, {
+      id: n.id,
+      title: n.title,
+      itemTypeId: n.itemTypeId,
+      model: n.model,
+      status: n.status,
+      degree: n.degree,
+      r: n.r,
+    });
+  }
+  const nodes: SimNode[] = [...nodeById.values()];
+  // Link ends are node ids here; the key is taken before forceLink swaps
+  // them for node objects.
+  const endId = (end: SimLink['source']): string =>
+    typeof end === 'object' ? end.id : String(end);
+  const links: RenderLink[] = data.links.map((l) => {
+    const source = endId(l.source);
+    const target = endId(l.target);
+    return { source, target, field: l.field, key: `${source}>${target}@${l.field}` };
+  });
 
   const svg = select(svgEl);
   svg.selectAll('*').remove();
@@ -84,15 +92,15 @@ export function renderGraph(
   const nodeLayer = viewport.append('g');
 
   const linkSel = linkLayer
-    .selectAll<SVGLineElement, SimLink>('line')
-    .data(links)
+    .selectAll<SVGLineElement, RenderLink>('line')
+    .data(links, (d) => d.key)
     .join('line')
     .attr('class', styles.link)
     .attr('marker-end', `url(#${markerId})`);
 
   const nodeSel = nodeLayer
     .selectAll<SVGGElement, SimNode>('g')
-    .data(nodes)
+    .data(nodes, (d) => d.id)
     .join('g')
     .attr('class', styles.node)
     .attr('data-status', (d) => d.status)
@@ -167,8 +175,14 @@ export function renderGraph(
     svg.call(zoomBehavior.transform, zoomIdentity.translate(tx, ty).scale(k));
   }
 
-  const simulation = forceSimulation<SimNode, SimLink>(nodes)
-    .force('link', forceLink<SimNode, SimLink>(links).distance(40).strength(0.55))
+  const simulation = forceSimulation<SimNode, RenderLink>(nodes)
+    .force(
+      'link',
+      forceLink<SimNode, RenderLink>(links)
+        .id((d) => d.id)
+        .distance(40)
+        .strength(0.55),
+    )
     .force(
       'charge',
       forceManyBody<SimNode>().strength((d) => -(70 + d.r * 9)),
@@ -188,26 +202,33 @@ export function renderGraph(
     fit();
   });
 
-  // Drag: reheat on the first `drag` event (not `start`) so a plain click
-  // leaves the layout alone. d3-drag suppresses the click after a real drag.
-  let dragging = false;
+  // Drag (POC pattern on `event.active`): pin on `start`, reheat on the first
+  // `drag` event of a gesture (not on `start`) so a plain click leaves the
+  // layout alone, release on `end`. d3-drag counts the current gesture in
+  // `active` during `drag` (but not during `start`/`end`), so "no other
+  // gesture" is `active === 1` there. d3-drag suppresses the click after a
+  // real drag.
+  let destroyed = false;
+  const pendingReheat = new Set<SimNode>();
   const dragBehavior = drag<SVGGElement, SimNode>()
     .on('start', (_event: D3DragEvent<SVGGElement, SimNode, SimNode>, d) => {
-      dragging = false;
+      if (destroyed) return;
+      pendingReheat.add(d);
       d.fx = d.x;
       d.fy = d.y;
     })
     .on('drag', (event: D3DragEvent<SVGGElement, SimNode, SimNode>, d) => {
-      if (!dragging) {
-        dragging = true;
+      if (destroyed) return;
+      if (pendingReheat.delete(d) && event.active === 1) {
         simulation.alphaTarget(0.25).restart();
       }
       d.fx = event.x;
       d.fy = event.y;
     })
-    .on('end', (_event: D3DragEvent<SVGGElement, SimNode, SimNode>, d) => {
-      if (dragging) simulation.alphaTarget(0);
-      dragging = false;
+    .on('end', (event: D3DragEvent<SVGGElement, SimNode, SimNode>, d) => {
+      if (destroyed) return;
+      pendingReheat.delete(d);
+      if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
     });
@@ -231,6 +252,8 @@ export function renderGraph(
 
   return {
     destroy() {
+      destroyed = true;
+      pendingReheat.clear();
       simulation.stop();
       simulation.on('tick', null).on('end', null);
       nodeSel.on('.drag', null).on('click', null);
