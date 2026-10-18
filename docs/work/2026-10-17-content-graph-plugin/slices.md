@@ -226,6 +226,14 @@ _Added 2026-10-18 from the owner's review after V6._
 **Done**
 - Each item visible on Gestart in both themes. Gate green.
 
+**V7 — done on 2026-10-18**
+- Outside selection on by default (hint as the switch's `hint`), rail without text selection, one bottom bar for stats and controls; readable arrows (`userSpaceOnUse` markers 4.5/6, `stroke-opacity`); one `selectNode` with an animated focus (450 ms, centred on the node, scale fitting its neighbours, reduced motion honoured); Help button with a native DatoCMS modal (`renderModal` + lazy `HelpModal`).
+- Owner check, round 1: isolate didn't reframe smoothly; distance spread cores more than their linked records; zoom buttons not animated; relayout glyph read as "reload". Fixed: camera follows the settle and glides to the fit; `reframe()` on isolate/Reset/All/None; charge ∝ D² with constant gravity (measured on Gestart: core/context ratio 3.86 → 3.79 instead of 4.43 at D=3); animated +/−/fit/relayout; SVG icons "Fit to screen" / "Rearrange layout"; node drag stops the follow.
+- Owner check, round 2: labels outside the frame after a reframe; nodes all the same size (median r 5). Fixed: `relativeRadius` (4–20 against the most-connected visible node), fit and focus include shown label widths.
+- Verified on Gestart by the owner after both rounds.
+- Rulings: dimmed links back to the previous 0.12; isolate/Reset/All/None reframe even after a user zoom, single toggles don't; no second whole-slice review for the close fixes.
+- Deferred: Smart-mode fit crossing k 1.8 uses the pre-zoom label set; handle `fit()` during a settle glides twice; arrow tips 0.45 px short on normal links.
+
 ## V8 — Starting models
 
 **Constraint from the V7 final review**

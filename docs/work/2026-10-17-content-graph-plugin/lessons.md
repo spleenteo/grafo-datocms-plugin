@@ -13,3 +13,5 @@
 - `datocms-react-ui` `Button` drops unknown props such as `aria-label`: give icon buttons visually hidden text.
 - A re-mounted renderer must start from the current visible set and view state; otherwise its first update reheats and refits and the restored view jumps.
 - State that survives a reload must be keyed by what defines the data (environment + permissions), never by a constant: a constant key leaks view state across roles.
+- Visual feedback on the graph needs the owner's eyes: plan a short manual round per slice and expect fixes; measure layout issues with a headless d3-force run on Gestart before changing formulas.
+- Sizes and fits must follow what is on screen: relative node radius against the visible set, fit bounds including the labels.

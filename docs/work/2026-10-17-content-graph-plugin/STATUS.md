@@ -1,8 +1,8 @@
 ---
 status: open
 phase: slice
-slice: V7
-step: close
+slice: V8
+step: plan
 work: content-graph-plugin
 stack: generic
 updated: 2026-10-18
@@ -26,7 +26,7 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - [x] V4 — Filter rail
 - [x] V5 — Role isolation, selection, inspector
 - [x] V6 — Search and view controls
-- [ ] V7 — UI tweaks
+- [x] V7 — UI tweaks
 - [ ] V8 — Starting models
 - [ ] V9 — Marketplace release
 
@@ -43,3 +43,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-18 — V4 close — filter rail live on the running graph; 3 task reviews + final review (4 fixes) + 2 style fixes — V5 plan (role isolation first) — — —
 - 2026-10-18 — V5 close — role isolation verified with a role token; selection, focus, inspector, keyboard; 4 task reviews (1 fix round) + final review (5 fixes + 1 follow-up) — V6 plan; browser check with a restricted collaborator pending — — —
 - 2026-10-18 — V6 close — search, label modes, view controls, in-place reload; 4 task reviews (3 fix rounds) + final review (4 fixes) — owner wants UI tweaks before V7 — — —
+- 2026-10-18 — V7 close — UI tweaks + two owner check rounds (reframing, distance, zoom animation/icons, relative size, label-aware fit) — V8 plan — — —
