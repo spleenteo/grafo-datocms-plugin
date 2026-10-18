@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, React 19, Vite, `datocms-plugin-sdk` ^2.5, `datocms-react-ui` ^2.5, Vitest.
 
-**Spec:** `docs/work/2026-10-17-content-graph-plugin/slices.md` § V1; `docs/development-guidelines.md`. Baseline files: `datocms-plugin` skill, `references/project-scaffold.md` (lazy-loading entry template) and `references/custom-pages.md`.
+**Spec:** `docs/work/2026-10-17-grafo/slices.md` § V1; `docs/development-guidelines.md`. Baseline files: `datocms-plugin` skill, `references/project-scaffold.md` (lazy-loading entry template) and `references/custom-pages.md`.
 
 ## Global Constraints
 

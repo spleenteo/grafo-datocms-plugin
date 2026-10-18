@@ -1,12 +1,12 @@
 {
-  "name": "datocms-plugin-content-graph",
+  "name": "datocms-plugin-grafo",
   "version": "0.1.0",
   "description": "Grafo: DatoCMS record relations as an interactive graph",
   "type": "module",
   "keywords": [
     "datocms-plugin"
   ],
-  "homepage": "https://github.com/spleenteo/content-graph-datocms-plugin",
+  "homepage": "https://github.com/spleenteo/grafo-datocms-plugin",
   "datoCmsPlugin": {
     "title": "Grafo",
     "entryPoint": "dist/index.html",

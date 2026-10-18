@@ -1,5 +1,5 @@
 ---
-work: content-graph-plugin
+work: grafo
 status: active
 superseded_by: null
 tags: [decision, data, cma, permissions]
@@ -8,7 +8,7 @@ description: "Roles without full read load records with `nested: true` (30 per p
 
 # Restricted roles load records with `nested: true`, without a block listing
 
-**Date**: 2026-10-18 · **Work**: `content-graph-plugin` · **Status**: active
+**Date**: 2026-10-18 · **Work**: `grafo` · **Status**: active
 
 ## Context
 
@@ -41,5 +41,5 @@ Cost for a restricted role: `1 + max(1, ceil(records/30))` per 200-model chunk.
 ## References
 
 - `docs/decisions-log/2026-10-18-load-records-without-nested.md`
-- `docs/work/2026-10-17-content-graph-plugin/V5-plan.md`
-- `docs/work/2026-10-17-content-graph-plugin/lessons.md` (role isolation)
+- `docs/work/2026-10-17-grafo/V5-plan.md`
+- `docs/work/2026-10-17-grafo/lessons.md` (role isolation)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Product name: **Grafo** (renamed from "Content Graph" on 2026-10-18; the repo, npm package name and work slug keep the old name). V1–V6 done: tab "Grafo" in the main navigation (`pageId` `graph`), data layer in `src/data/` (CMA loading + graph building), D3 view in `src/graph/` + `src/components/GraphView.tsx`, page `src/entrypoints/GraphPage.tsx`. Filters, role isolation, inspector, search and view controls are built; V7 (marketplace release) is next. Work state: `docs/work/2026-10-17-content-graph-plugin/STATUS.md`.
+Product name: **Grafo** (renamed from "Content Graph" on 2026-10-18; repo `spleenteo/grafo-datocms-plugin`, npm package `datocms-plugin-grafo`, work slug `grafo`). V1–V7 done, V8 (starting/excluded models) at close: tab "Grafo" in the main navigation (`pageId` `graph`), data layer in `src/data/` (CMA loading + graph building), D3 view in `src/graph/` + `src/components/GraphView.tsx`, page `src/entrypoints/GraphPage.tsx`. Filters, role isolation, inspector, search, view controls and the config screen are built; V9 (marketplace release) is next. Work state: `docs/work/2026-10-17-grafo/STATUS.md`.
 
 Commands:
 

@@ -1,5 +1,5 @@
 ---
-work: content-graph-plugin
+work: grafo
 status: active
 superseded_by: null
 tags: [decision, data, cma]
@@ -10,7 +10,7 @@ description: "Records and blocks are listed separately at 500 per page without `
 
 Scope narrowed by 2026-10-18-nested-listing-for-restricted-roles: applies to full-read roles only.
 
-**Date**: 2026-10-18 · **Work**: `content-graph-plugin` · **Status**: active
+**Date**: 2026-10-18 · **Work**: `grafo` · **Status**: active
 
 ## Context
 
@@ -32,5 +32,5 @@ The graph needs every link, including links inside blocks (modular content, sing
 
 ## References
 
-- `docs/work/2026-10-17-content-graph-plugin/spike-cma-loading.md`
-- `docs/work/2026-10-17-content-graph-plugin/slices.md` § V2
+- `docs/work/2026-10-17-grafo/spike-cma-loading.md`
+- `docs/work/2026-10-17-grafo/slices.md` § V2

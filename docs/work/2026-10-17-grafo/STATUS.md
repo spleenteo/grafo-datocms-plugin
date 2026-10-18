@@ -3,10 +3,10 @@ status: open
 phase: slice
 slice: V8
 step: execute
-work: content-graph-plugin
+work: grafo
 stack: generic
 updated: 2026-10-18
-tags: [work, content-graph-plugin]
+tags: [work, grafo]
 description: "Full-page DatoCMS plugin that renders record relations (incoming and outgoing) as an interactive graph, with filters by model, status and relation field; each node opens its record."
 ---
 
@@ -44,3 +44,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-18 — V5 close — role isolation verified with a role token; selection, focus, inspector, keyboard; 4 task reviews (1 fix round) + final review (5 fixes + 1 follow-up) — V6 plan; browser check with a restricted collaborator pending — — —
 - 2026-10-18 — V6 close — search, label modes, view controls, in-place reload; 4 task reviews (3 fix rounds) + final review (4 fixes) — owner wants UI tweaks before V7 — — —
 - 2026-10-18 — V7 close — UI tweaks + two owner check rounds (reframing, distance, zoom animation/icons, relative size, label-aware fit) — V8 plan — — —
+- 2026-10-18 — rename — work slug, repo, npm name and branch renamed to Grafo (owner) — V8 close (owner check pending) — — —

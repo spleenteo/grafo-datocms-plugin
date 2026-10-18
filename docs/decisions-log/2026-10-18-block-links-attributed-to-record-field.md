@@ -1,5 +1,5 @@
 ---
-work: content-graph-plugin
+work: grafo
 status: active
 superseded_by: null
 tags: [decision, data, graph]
@@ -8,7 +8,7 @@ description: "Links found inside blocks are attributed to the record's top-level
 
 # Links inside blocks belong to the record's top-level field
 
-**Date**: 2026-10-18 · **Work**: `content-graph-plugin` · **Status**: active
+**Date**: 2026-10-18 · **Work**: `grafo` · **Status**: active
 
 ## Context
 
@@ -29,5 +29,5 @@ A link can sit in a field of a block nested inside a record's modular content, s
 
 ## References
 
-- `docs/work/2026-10-17-content-graph-plugin/spike-cma-loading.md` § 3
+- `docs/work/2026-10-17-grafo/spike-cma-loading.md` § 3
 - User decision, 2026-10-18 (V2 planning)
