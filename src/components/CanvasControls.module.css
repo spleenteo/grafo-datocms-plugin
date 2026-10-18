@@ -70,7 +70,7 @@
 
 .distance input {
   width: 96px;
-  accent-color: var(--color--accent);
+  accent-color: var(--color--ink-primary);
 }
 
 .distanceValue {
@@ -108,7 +108,7 @@
 }
 
 .zoomStack button:focus-visible {
-  outline: 2px solid var(--color--accent);
+  outline: 2px solid var(--color--focus--border);
   outline-offset: -2px;
 }
 
