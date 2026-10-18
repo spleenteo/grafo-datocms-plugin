@@ -32,8 +32,15 @@ const graph: Graph = {
   ],
 };
 
-const with_ = (patch: Partial<Filters>): Filters => ({ ...allFilters(graph), ...patch });
+const with_ = (patch: Partial<Filters>): Filters => ({ ...allFilters(graph), showsOutside: false, ...patch });
 const ids = (s: Set<string>) => [...s].sort();
+
+describe('allFilters', () => {
+  it('defaults to showing relations outside the selection', () => {
+    expect(allFilters(graph).showsOutside).toBe(true);
+    expect(allFilters(graph).direction).toBe('both');
+  });
+});
 
 describe('filterGraph', () => {
   it('shows all non-self edges with all filters', () => {

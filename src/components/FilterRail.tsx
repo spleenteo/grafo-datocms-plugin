@@ -168,6 +168,11 @@ export default function FilterRail({ graph, colorIndex, filters, onChange }: Pro
           label="Relations outside selection"
           value={filters.showsOutside}
           onChange={(showsOutside) => set({ showsOutside })}
+          hint={
+            filters.showsOutside && filters.models.size === graph.models.length
+              ? 'All models are selected: nothing is outside the selection.'
+              : undefined
+          }
         />
         {filters.showsOutside && (
           <ButtonGroup>

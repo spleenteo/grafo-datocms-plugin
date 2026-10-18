@@ -132,14 +132,10 @@ export default function GraphWorkspace({
   }, [matches]);
 
   const contextCount = visible.contextIds.size;
-  const isEverythingSelected = filters.models.size === graph.models.length;
   const stats =
     `${visible.coreIds.size} of ${graph.nodes.length} records` +
     (contextCount > 0 ? ` (+${contextCount} related)` : '') +
     ` · ${visible.edgeIndexes.length} relations · ${requestCount} CMA requests` +
-    (filters.showsOutside && isEverythingSelected
-      ? ' · All models are selected: nothing is outside the selection.'
-      : '') +
     (isRefreshing ? ' · Reloading…' : refreshError ? ` · Reload failed: ${refreshError}` : '');
 
   return (

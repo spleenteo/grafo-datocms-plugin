@@ -21,7 +21,7 @@ export function allFilters(graph: Graph): Filters {
     models: new Set(graph.models.map((_, i) => i)),
     statuses: new Set<NodeStatus>(['published', 'updated', 'draft']),
     fields: new Set(graph.fields.map((_, i) => i)),
-    showsOutside: false,
+    showsOutside: true,
     direction: 'both',
     hidesOrphans: false,
   };

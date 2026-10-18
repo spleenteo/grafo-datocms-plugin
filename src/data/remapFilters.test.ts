@@ -36,11 +36,11 @@ describe('remapFilters', () => {
   });
   it('copies scalar filters into new sets', () => {
     const prev = g(['a'], []);
-    const f = { ...allFilters(prev), statuses: new Set(['draft' as const]), showsOutside: true, direction: 'out' as const, hidesOrphans: true };
+    const f = { ...allFilters(prev), statuses: new Set(['draft' as const]), showsOutside: false, direction: 'out' as const, hidesOrphans: true };
     const out = remapFilters(prev, prev, f);
     expect(out.statuses).not.toBe(f.statuses);
     expect([...out.statuses]).toEqual(['draft']);
-    expect(out.showsOutside).toBe(true);
+    expect(out.showsOutside).toBe(false);
     expect(out.direction).toBe('out');
     expect(out.hidesOrphans).toBe(true);
   });
