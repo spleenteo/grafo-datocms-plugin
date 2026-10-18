@@ -104,9 +104,8 @@ const FOCUS_SCALE_MAX = 2;
 const FOCUS_DURATION = 450;
 const FIT_DURATION = 450;
 const ZOOM_DURATION = 250;
-// Camera follow during a settle: ease factor per tick, active while alpha is above the floor.
+// Camera follow during a settle: ease factor per tick, active until the simulation's `end`.
 const FOLLOW_EASE = 0.12;
-const FOLLOW_MIN_ALPHA = 0.05;
 // The arrow tip passes the line end by (10 − refX) viewBox units; at the `hi`
 // marker size (6 px per 10 units) that is 1.8 px, added to the end offset.
 const ARROW_REF_X = 7;
@@ -587,7 +586,8 @@ export function renderGraph(
         follow = false;
         return;
       }
-      if (simulation.alpha() > FOLLOW_MIN_ALPHA) followStep();
+      // Until `end`, so the final glide only corrects a small residue.
+      followStep();
     })
     .on('end', () => {
       const mode = fitOnEnd;
@@ -619,6 +619,10 @@ export function renderGraph(
     .on('start', (_event: D3DragEvent<SVGGElement, SimNode, SimNode>, d) => {
       if (destroyed) return;
       pendingReheat.add(d);
+      // A node drag is a user action: the view must not move under the cursor
+      // nor refit when the drag's settle ends.
+      follow = false;
+      fitOnEnd = 'none';
       d.fx = d.x;
       d.fy = d.y;
     })
