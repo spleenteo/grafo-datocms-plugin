@@ -1,9 +1,8 @@
 import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { Canvas, Spinner } from 'datocms-react-ui';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import GraphView from '../components/GraphView';
-import { prepareSimulation } from '../graph/prepareSimulation';
+import { useEffect, useState } from 'react';
+import GraphWorkspace from '../components/GraphWorkspace';
 import { loadGraph } from '../data/loadGraph';
 import type { Graph } from '../data/types';
 import styles from './GraphPage.module.css';
@@ -12,6 +11,18 @@ type State =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'done'; graph: Graph; requestCount: number };
+
+const graphKeys = new WeakMap<Graph, number>();
+let lastGraphKey = 0;
+function graphKey(graph: Graph): number {
+  let key = graphKeys.get(graph);
+  if (key === undefined) {
+    lastGraphKey += 1;
+    key = lastGraphKey;
+    graphKeys.set(graph, key);
+  }
+  return key;
+}
 
 export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   const apiToken = ctx.currentUserAccessToken;
@@ -40,11 +51,6 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   }, [apiToken, environment, baseUrl]);
 
   const graph = state.status === 'done' ? state.graph : null;
-  const data = useMemo(() => (graph ? prepareSimulation(graph) : null), [graph]);
-  const modelName = useCallback(
-    (model: number) => graph?.models[model]?.name ?? '',
-    [graph],
-  );
 
   let body: ReactNode;
   if (!apiToken) {
@@ -57,19 +63,15 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
     body = <Spinner placement="centered" />;
   } else if (state.status === 'error') {
     body = <p className={styles.error}>{state.message}</p>;
-  } else if (graph && data) {
+  } else if (graph) {
     return (
       <Canvas ctx={ctx} noAutoResizer>
-        <div className={styles.fullPage}>
-          <h1 className={styles.title}>Grafo</h1>
-          <div className={styles.stage}>
-            <GraphView data={data} modelName={modelName} ctx={ctx} />
-            <p className={styles.overlay}>
-              {graph.nodes.length} records · {graph.models.length} models ·{' '}
-              {data.links.length} relations · {state.requestCount} CMA requests
-            </p>
-          </div>
-        </div>
+        <GraphWorkspace
+          key={graphKey(graph)}
+          graph={graph}
+          requestCount={state.requestCount}
+          ctx={ctx}
+        />
       </Canvas>
     );
   }

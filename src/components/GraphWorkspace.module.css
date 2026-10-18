@@ -1,0 +1,31 @@
+.workspace {
+  box-sizing: border-box;
+  display: flex;
+  height: 100vh;
+  background: var(--color--surface);
+  color: var(--color--ink);
+}
+
+.stage {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.overlay {
+  position: absolute;
+  top: var(--spacing-s);
+  left: var(--spacing-s);
+  font-size: var(--font-size-s);
+  color: var(--color--ink-muted);
+  pointer-events: none;
+}
+
+.counts,
+.hint {
+  margin: 0;
+}
+
+.hint {
+  margin-top: var(--spacing-xs);
+}
