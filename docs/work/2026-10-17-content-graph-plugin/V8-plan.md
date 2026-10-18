@@ -101,3 +101,16 @@ Also in T6 (owner request 2026-10-18): default node distance 1.6× (workspace in
 - Storage key `grafo:filters:v1:<siteId>:<environment>:<currentUser.type>:<currentUser.id>`; `localStorage` I/O lives in `GraphWorkspace` inside try/catch (blocked or partitioned storage in the iframe). Initial filters = stored ?? starting; a `useEffect` on `filters` writes (never during render); Reset removes the key and applies the starting filters.
 
 **Verify:** tests: round trip; model added after saving comes up on; unknown model ignored; starting-key mismatch → null; bad status/direction → null; bad shape → null. Gate green. Commit.
+
+### Task 8 (T8): Automatic distance and always-centred view changes `critical`
+
+Owner check 3: with all 197 Gestart nodes visible the right distance is ~0.6×; with a small view ~1.6×; "centring in the canvas is always needed". Calibration (owner screenshots, canvas ≈ 1100 px): layout extent ≈ √n · 40 · D · s, fitted at k ≈ 1 when it equals the canvas side → s ≈ 3.26.
+
+**Files:** create `src/graph/autoDistance.ts` (+ test); modify `src/components/GraphWorkspace.tsx`, `src/components/GraphView.tsx`, `src/components/CanvasControls.tsx` (+ css), `src/graph/renderGraph.ts` (only to expose the svg size if needed).
+
+**What:**
+- `autoDistance(visibleCount: number, canvasSide: number): number` = `clamp(canvasSide / (130 · √visibleCount), 0.4, 2.5)`, rounded to 0.05; `visibleCount ≤ 0` → 1.6.
+- Distance mode in `GraphWorkspace`: `'auto'` (default) or `'manual'`. Auto value from the visible node count (core + context, expansion included) and `min(width, height)` of the stage, tracked with a `ResizeObserver` on the stage (debounced to animation frames). Moving the slider switches to manual with that value; an "Auto" toggle button next to the slider (pressed state when auto, visually hidden "(on)" text) returns to auto. The slider always shows the effective value. The 1.6 default only applies as fallback.
+- Centring always (owner ruling, supersedes V6's "no jump after a wheel zoom"): every change of the visible set and every distance change reframes (call `reframe()` before the change reaches the renderer), except changes caused by a selection, which keep the focus behaviour from T5.
+
+**Verify:** `autoDistance` tests: 197 nodes at 1100 → 0.6; 25 at 1100 → 1.7 (±0.05); 1 node → 2.5; 0 → 1.6; tiny canvas clamps at 0.4. Gate green. Commit.
