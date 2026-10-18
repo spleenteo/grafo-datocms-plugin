@@ -249,8 +249,9 @@ export function renderGraph(
     if (focus === null) return;
     nodeSel
       .filter((d) => d.id === focus)
-      .raise()
       .each(function () {
+        // Moving a focused element in the DOM drops keyboard focus.
+        if (this !== document.activeElement) select(this).raise();
         const text = this.querySelector('text');
         if (!text) return;
         const box = text.getBBox();
