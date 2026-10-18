@@ -243,6 +243,8 @@ _Added 2026-10-18 from the owner's review after V6._
 - Plugin config screen: an admin picks the models switched on when Grafo opens (default: all readable models).
 - Opening Grafo: those models on in the rail, "Relations outside selection" on (Both), so linked records of other models show as context nodes; the editor switches other models on from the rail.
 - Loading unchanged: every readable model is still loaded (owner decision 2026-10-18, option 1: incoming relations need the other models' records). Models in the config that the role can't read are ignored.
+- Excluded models (owner, 2026-10-18): the config screen has an "Excluded models" list; excluded models are never queried nor shown, anywhere. Until an admin saves the config, the list defaults to `schema_migration` (the model DatoCMS creates when migrations are used), so no useless queries and no cleanup afterwards.
+- Node size: area proportional to relations against the most-connected visible record, radius 3–24 (owner, 2026-10-18, after measuring: a linear radius would put 140 of 197 Gestart nodes at 4–6 px).
 
 **Out**
 - Partial loading with per-record `items.references` (possible later option for very large projects).
