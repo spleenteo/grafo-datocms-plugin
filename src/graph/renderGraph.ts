@@ -9,6 +9,8 @@ import {
   forceY,
 } from 'd3-force';
 import { select } from 'd3-selection';
+// Side effect: patches `selection.transition()` and `selection.interrupt()`.
+import 'd3-transition';
 import type { EnterElement, Selection } from 'd3-selection';
 import { zoom, zoomIdentity, zoomTransform } from 'd3-zoom';
 import type { D3ZoomEvent } from 'd3-zoom';
@@ -57,15 +59,19 @@ export interface RenderGraphHandle {
   update(visible: VisibleSet): void;
   /** Marks a node as selected (halo, focus when nothing is hovered); an id outside the visible set counts as null. */
   setSelection(id: string | null): void;
-  /** Centres a visible node at scale max(current, 1.2), no transition; a no-op for an id not visible. */
+  /**
+   * Animates (450 ms; instant with reduced motion) to centre a visible node, at the scale that fits its
+   * visible neighbours around it (clamped to [0.5, 2]; max(current, 1.2) without neighbours). Never sets
+   * `userMoved`, cancels a pending fit-on-end. A no-op for an id not visible.
+   */
   focusOn(id: string): void;
   /** No-op when the mode does not change. Never reheats. */
   setLabelMode(mode: LabelMode): void;
   /** Search matches: labelled, and the rest dimmed when nothing has focus. An empty set clears. No-op when the content is unchanged. */
   setQuery(matchIds: ReadonlySet<string>): void;
-  /** +/− buttons: an explicit user zoom, so it sets `userMoved`. */
+  /** +/− buttons: an explicit user zoom, so it sets `userMoved`. Interrupts a running focus transition. */
   zoomBy(factor: number): void;
-  /** Fits the visible nodes and resets `userMoved`. */
+  /** Fits the visible nodes and resets `userMoved`. Interrupts a running focus transition. */
   fit(): void;
   /** Random restart of the layout, then fit; resets `userMoved`. */
   relayout(): void;
@@ -87,6 +93,16 @@ const FIT_PADDING = 40;
 const FIT_MAX_SCALE = 2;
 const UPDATE_ALPHA = 0.55;
 const FOCUS_MIN_SCALE = 1.2;
+const FOCUS_PADDING = 60;
+const FOCUS_SCALE_MIN = 0.5;
+const FOCUS_SCALE_MAX = 2;
+const FOCUS_DURATION = 450;
+// The arrow tip passes the line end by (10 − refX) viewBox units; at the `hi`
+// marker size (6 px per 10 units) that is 1.8 px, added to the end offset.
+const ARROW_REF_X = 7;
+const ARROW_SIZE = 4.5;
+const ARROW_SIZE_HI = 6;
+const ARROW_OVERSHOOT = ((10 - ARROW_REF_X) * ARROW_SIZE_HI) / 10;
 const LABEL_MAX = 30;
 const PILL_PAD_X = 6;
 const PILL_PAD_Y = 3;
@@ -234,22 +250,24 @@ export function renderGraph(
 
   const markerPrefix = `cg-${++markerSeq}`;
   const defs = svg.append('defs');
-  function appendMarker(id: string, className: string) {
+  // userSpaceOnUse: the size is in px, not multiplied by the stroke width.
+  function appendMarker(id: string, className: string, size: number) {
     defs
       .append('marker')
       .attr('id', id)
       .attr('class', className)
       .attr('viewBox', '0 0 10 10')
-      .attr('refX', 9)
+      .attr('markerUnits', 'userSpaceOnUse')
+      .attr('refX', ARROW_REF_X)
       .attr('refY', 5)
-      .attr('markerWidth', 6)
-      .attr('markerHeight', 6)
+      .attr('markerWidth', size)
+      .attr('markerHeight', size)
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0 0 L10 5 L0 10 z');
   }
-  appendMarker(`${markerPrefix}-ar`, styles.arrow);
-  appendMarker(`${markerPrefix}-ar-hi`, styles.arrowHi);
+  appendMarker(`${markerPrefix}-ar`, styles.arrow, ARROW_SIZE);
+  appendMarker(`${markerPrefix}-ar-hi`, styles.arrowHi, ARROW_SIZE_HI);
 
   const viewport = svg.append('g');
   const linkLayer = viewport.append('g');
@@ -422,7 +440,7 @@ export function renderGraph(
       const dy = ty - sy;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
       const startOff = s.r + 1;
-      const endOff = t.r + (t.status === 'updated' ? 5 : 3);
+      const endOff = t.r + (t.status === 'updated' ? 5 : 3) + ARROW_OVERSHOOT;
       this.setAttribute('x1', String(sx + (dx / len) * startOff));
       this.setAttribute('y1', String(sy + (dy / len) * startOff));
       this.setAttribute('x2', String(tx - (dx / len) * endOff));
@@ -609,11 +627,45 @@ export function renderGraph(
       if (!n || !w || !h) return;
       // A settling fit would overwrite the focus.
       fitOnEnd = 'none';
-      const k = Math.max(zoomTransform(svgEl).k, FOCUS_MIN_SCALE);
-      svg.call(
-        zoomBehavior.transform,
-        zoomIdentity.translate(w / 2 - k * (n.x ?? 0), h / 2 - k * (n.y ?? 0)).scale(k),
-      );
+      const nx = n.x ?? 0;
+      const ny = n.y ?? 0;
+      // Neighbours = the other end of a visible link (same rule as paint()).
+      let maxDx = 0;
+      let maxDy = 0;
+      let maxR = n.r;
+      let hasNeighbour = false;
+      for (const l of visibleLinks) {
+        const s = endId(l.source);
+        const t = endId(l.target);
+        const other = s === id ? t : t === id ? s : null;
+        if (other === null || other === id) continue;
+        const o = nodeById.get(other);
+        if (!o) continue;
+        hasNeighbour = true;
+        maxDx = Math.max(maxDx, Math.abs((o.x ?? 0) - nx));
+        maxDy = Math.max(maxDy, Math.abs((o.y ?? 0) - ny));
+        maxR = Math.max(maxR, o.r);
+      }
+      let k: number;
+      if (hasNeighbour) {
+        const availW = Math.max(1, w - 2 * FOCUS_PADDING);
+        const availH = Math.max(1, h - 2 * FOCUS_PADDING);
+        const fitK = Math.min(availW / (2 * maxDx + 2 * maxR), availH / (2 * maxDy + 2 * maxR));
+        k = Math.max(FOCUS_SCALE_MIN, Math.min(FOCUS_SCALE_MAX, fitK));
+      } else {
+        k = Math.max(zoomTransform(svgEl).k, FOCUS_MIN_SCALE);
+      }
+      const target = zoomIdentity.translate(w / 2 - k * nx, h / 2 - k * ny).scale(k);
+      // Programmatic: the zoom events carry no sourceEvent, so userMoved stays as is.
+      svg.interrupt();
+      const reduced =
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced) {
+        svg.call(zoomBehavior.transform, target);
+      } else {
+        svg.transition().duration(FOCUS_DURATION).call(zoomBehavior.transform, target);
+      }
     },
     setLabelMode(mode: LabelMode) {
       if (destroyed || mode === labelMode) return;
@@ -698,9 +750,8 @@ export function renderGraph(
         .on('focus', null)
         .on('blur', null);
       svg.on('.zoom', null).on('click', null);
-      // `interrupt` is patched onto selections by d3-transition, which d3-zoom
-      // imports; no transitions are started here, this is belt and braces.
-      (svg as unknown as { interrupt?: () => void }).interrupt?.();
+      // Stops a running focusOn transition before the SVG is cleared.
+      svg.interrupt();
       svg.selectAll('*').remove();
       svg.classed(styles.root, false).classed(styles.labelsAll, false).classed(styles.labelsFocus, false);
     },

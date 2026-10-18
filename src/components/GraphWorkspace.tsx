@@ -100,9 +100,11 @@ export default function GraphWorkspace({
     },
     [graph],
   );
-  const selectFromInspector = useCallback((id: string) => {
+  // Every user selection (node click, Enter/Space, search Enter, inspector
+  // row) goes through here; null (background click, Esc, close) only deselects.
+  const selectNode = useCallback((id: string | null) => {
     setSelectedId(id);
-    viewRef.current?.focusOn(id);
+    if (id !== null) viewRef.current?.focusOn(id);
   }, []);
 
   // Set synchronously on click so a fast double click starts one refresh.
@@ -127,9 +129,8 @@ export default function GraphWorkspace({
   const jumpToFirstMatch = useCallback(() => {
     const first = matches[0];
     if (first === undefined) return;
-    setSelectedId(first);
-    viewRef.current?.focusOn(first);
-  }, [matches]);
+    selectNode(first);
+  }, [matches, selectNode]);
 
   const contextCount = visible.contextIds.size;
   const stats =
@@ -156,7 +157,7 @@ export default function GraphWorkspace({
           matchIds={matchIds}
           distance={distance}
           modelName={modelName}
-          onSelect={setSelectedId}
+          onSelect={selectNode}
         />
         <CanvasControls
           query={query}
@@ -181,7 +182,7 @@ export default function GraphWorkspace({
         nodeIndex={selectedId === null ? null : (indexById.get(selectedId) ?? null)}
         visibleIds={visibleIds}
         colorIndex={data.colorIndex}
-        onSelectNode={selectFromInspector}
+        onSelectNode={selectNode}
         onOpenNode={openNode}
         onClose={() => setSelectedId(null)}
       />
