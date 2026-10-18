@@ -52,7 +52,8 @@ export default function GraphWorkspace({
   // same render, so `filterGraph` never pairs the new graph with old indexes.
   const [prevGraph, setPrevGraph] = useState(graph);
   let filters = storedFilters;
-  if (graph !== prevGraph) {
+  const isRemap = graph !== prevGraph;
+  if (isRemap) {
     filters = remapFilters(prevGraph, graph, storedFilters);
     setPrevGraph(graph);
     setFilters(filters);
@@ -72,11 +73,14 @@ export default function GraphWorkspace({
   // A selection may sit on an expansion node (the user walks from record to
   // record), so it is checked against the filtered set only when the filters
   // change: in this same render, so no frame expands around a stale selection.
+  // The remap after a Reload is not a user change: the selection stays while
+  // its record is still in the graph, and the expansion recomputes around it.
   const [prevFilters, setPrevFilters] = useState(filters);
   let checkedSelectedId = rawSelectedId;
   if (filters !== prevFilters) {
     setPrevFilters(filters);
     if (
+      !isRemap &&
       checkedSelectedId !== null &&
       !filtered.coreIds.has(checkedSelectedId) &&
       !filtered.contextIds.has(checkedSelectedId)
