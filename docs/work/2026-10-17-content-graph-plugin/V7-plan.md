@@ -60,3 +60,35 @@
 ### Task 4 (T4): Check on Gestart — manual, at close (depends on: T1–T3)
 
 **What:** `npm run dev`, Grafo on Gestart: outside selection on at open and after Reset; isolate Testimonianza → testimonials + context nodes; arrows readable on a dense node (e.g. "Gestione interventi e materiali"); select by click, keyboard, search and inspector → smooth centring on node + relations; stats bar on a narrow window; double-click a model row doesn't select text; Help opens, reads well in both themes, closes.
+
+---
+
+## Close fixes (owner check, 2026-10-18)
+
+Root causes (verified in code and with a d3-force run on Gestart, `.superpowers/v7-debug/distance.ts`):
+- After a filter change the fit happens only on the simulation `end` (seconds later) and instantly; with `userMoved` set (any earlier zoom) it never happens.
+- Distance: charge `−(70 + 9r)·D` with gravity `0.05 / D` scales core spacing faster than core→context links (ratio 3.86 → 4.43 from D=1 to 3 on Testimonianza). Charge `·D²` with constant gravity keeps the shape (3.86 → 3.79) and scales spacing linearly (doc_page 212 → 426 → 638).
+- +/− and fit are instant; the relayout glyph ↻ reads as "reload".
+
+### Task 5 (T5): Smooth reframing and uniform distance `critical`
+
+**Files:** modify `src/graph/renderGraph.ts`.
+
+**What:**
+- Camera follow: after `update()` and `setDistance()` (when not `userMoved`), on each tick while alpha > 0.05 the transform eases toward the fit target of the visible nodes (`t = t + (target − t)·0.12` on x, y, k, applied via `zoom.transform` with no source event); at `end` a 450 ms transition to the final fit. A user wheel/drag during the follow sets `userMoved` and stops it. `prefers-reduced-motion`: no follow, one instant fit at `end`.
+- `reframe()` handle method: resets `userMoved` so the next `update()` follows and fits even after a user zoom.
+- Distance: charge `−(70 + 9r)·D²`, forceX/forceY strength constant 0.05, link distance `40·D`, collide `r + 2 + 2·D`.
+- `zoomBy` animates (250 ms transition of `scaleBy`); the handle's `fit()` animates (450 ms); relayout keeps its synchronous layout and animates the camera to the fit (450 ms). All honour reduced motion; all transitions are interrupted by user gestures, a new `focusOn`, or `destroy()`.
+
+**Verify / Done:** gate green. Commit.
+
+### Task 6 (T6): Reframe on isolate/reset and clearer zoom icons (depends on: T5)
+
+**Files:** modify `src/components/FilterRail.tsx`, `src/components/GraphWorkspace.tsx`, `src/components/GraphView.tsx` (expose `reframe`), `src/components/CanvasControls.tsx` (+ css).
+
+**What:**
+- Double-click isolate, Reset filters and the models "All"/"None" buttons call `reframe()` before the filter change (explicit "show me this" intents); single chip/row toggles keep respecting `userMoved` (V6 behaviour).
+- Zoom stack icons as inline SVGs (`currentColor`, 16×16, stroke 1.75, `aria-hidden`): plus, minus, "frame" (four corner brackets) for fit, "shuffle" (two crossing arrows) for relayout. Labels/tooltips: "Zoom in", "Zoom out", "Fit to screen", "Rearrange layout".
+- Help modal shortcut list unchanged; its "Relayout" mention (if any) renamed to "Rearrange layout".
+
+**Verify / Done:** gate green. Commit.
