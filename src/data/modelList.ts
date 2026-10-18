@@ -6,9 +6,14 @@ type Listed = { name: string; apiKey: string };
 export const normalizeForSearch = (text: string): string =>
   text.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase();
 
+/** Name without its leading emoji, symbols and spaces. */
+export function withoutLeadingSymbols(name: string): string {
+  return name.replace(/^[^\p{L}\p{N}]+/u, '');
+}
+
 /** Name without its leading emoji, symbols and spaces, lowercased: what the list sorts and searches on. */
 export function modelSortName(name: string): string {
-  return name.replace(/^[^\p{L}\p{N}]+/u, '').toLowerCase();
+  return withoutLeadingSymbols(name).toLowerCase();
 }
 
 /** Whether the model's name or api key contains the query, ignoring case and accents. */

@@ -171,3 +171,17 @@
   width: 8px;
   height: 8px;
 }
+
+.groupOutside {
+  font-style: italic;
+}
+
+.outsideLabel {
+  composes: sectionHeading from './shared.module.css';
+  margin: var(--spacing-xs) 0 0;
+}
+
+/* Model the field links to: secondary, so the label stays the chip's name. */
+.chipTarget {
+  opacity: 0.7;
+}

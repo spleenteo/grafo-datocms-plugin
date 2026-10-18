@@ -1,6 +1,7 @@
 import { Button, ButtonGroup, ButtonGroupButton, SwitchField, TextInput } from 'datocms-react-ui';
 import { memo, useMemo, useState, type KeyboardEvent } from 'react';
-import { normalizeForSearch, orderModels, type ModelSort } from '../data/modelList';
+import { fieldStats, linksInto } from '../data/fieldStats';
+import { normalizeForSearch, orderModels, withoutLeadingSymbols, type ModelSort } from '../data/modelList';
 import { fieldLabel, fieldTitle } from '../data/types';
 import { allFilters, type Filters } from '../data/filterGraph';
 import type { Graph, NodeStatus } from '../data/types';
@@ -154,32 +155,40 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
   }, [graph]);
   const [fieldQuery, setFieldQuery] = useState('');
   const [fieldsCollapsed, setFieldsCollapsed] = useState(false);
-  const fieldCounts = useMemo(() => {
-    const counts = new Array<number>(graph.fields.length).fill(0);
-    for (const e of graph.edges) if (e.source !== e.target) counts[e.field] += 1;
-    return counts;
-  }, [graph]);
-  // Fields of the enabled models, grouped by model in the models list's order.
+  const { counts: fieldCounts, targets: fieldTargets } = useMemo(() => fieldStats(graph), [graph]);
+  // Fields of the enabled models, grouped by model in the models list's order;
+  // with relations outside the selection shown (both or in), also the fields of
+  // other models that link into it, in groups marked `isOutside`.
   const fieldGroups = useMemo(() => {
+    const showsIncoming = filters.showsOutside && filters.direction !== 'out';
     const byModel = new Map<number, number[]>();
     graph.fields.forEach((f, i) => {
-      if (!filters.models.has(f.model)) return;
+      const isListed =
+        filters.models.has(f.model) ||
+        (showsIncoming && linksInto(fieldTargets[i], filters.models));
+      if (!isListed) return;
       byModel.set(f.model, [...(byModel.get(f.model) ?? []), i]);
     });
     const byRelations = (a: number, b: number) =>
       fieldCounts[b] - fieldCounts[a] ||
       graph.fields[a].label.localeCompare(graph.fields[b].label);
-    return orderModels(graph.models, sort, '')
+    const groups = orderModels(graph.models, sort, '')
       .filter((m) => byModel.has(m))
-      .map((model) => ({ model, fields: byModel.get(model)!.sort(byRelations) }));
-  }, [graph, filters.models, sort, fieldCounts]);
+      .map((model) => ({
+        model,
+        isOutside: !filters.models.has(model),
+        fields: byModel.get(model)!.sort(byRelations),
+      }));
+    return [...groups.filter((g) => !g.isOutside), ...groups.filter((g) => g.isOutside)];
+  }, [graph, filters.models, filters.showsOutside, filters.direction, sort, fieldCounts, fieldTargets]);
   const hasFieldSearch = fieldGroups.reduce((n, g) => n + g.fields.length, 0) > FIELD_SEARCH_MIN;
   const listedGroups = useMemo(() => {
     const needle = normalizeForSearch(hasFieldSearch ? fieldQuery.trim() : '');
     if (!needle) return fieldGroups;
     return fieldGroups
-      .map(({ model, fields }) => ({
+      .map(({ model, isOutside, fields }) => ({
         model,
+        isOutside,
         fields: fields.filter((i) =>
           [graph.fields[i].label, graph.fields[i].apiKey, graph.models[model].name].some((text) =>
             normalizeForSearch(text).includes(needle),
@@ -189,6 +198,9 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
       .filter((g) => g.fields.length > 0);
   }, [graph, fieldGroups, fieldQuery, hasFieldSearch]);
   const listedFields = listedGroups.flatMap((g) => g.fields);
+  // Target model names without their leading emoji, as the hint is small.
+  const targetNames = (targets: ReadonlySet<number>) =>
+    [...targets].map((m) => withoutLeadingSymbols(graph.models[m].name)).sort();
   const onFieldSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation();
     if (event.key === 'Escape') setFieldQuery('');
@@ -309,9 +321,12 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
           </p>
         )}
         {!fieldsCollapsed &&
-          listedGroups.map(({ model, fields }) => (
+          listedGroups.map(({ model, isOutside, fields }, i) => (
             <div key={model} className={styles.fieldGroup}>
-              <div className={styles.groupLabel}>
+              {isOutside && !listedGroups[i - 1]?.isOutside && (
+                <p className={styles.outsideLabel}>Outside selection</p>
+              )}
+              <div className={`${styles.groupLabel} ${isOutside ? styles.groupOutside : ''}`}>
                 <span className={styles.dot} style={{ background: modelColor(colorIndex[model]) }} />
                 <span className={styles.modelName}>{graph.models[model].name}</span>
               </div>
@@ -319,16 +334,21 @@ function FilterRail({ graph, colorIndex, filters, onChange, resetFilters, onHelp
                 {fields.map((index) => {
                   const field = graph.fields[index];
                   const isOn = filters.fields.has(index);
+                  const targets = targetNames(fieldTargets[index]);
                   return (
                     <button
                       key={index}
                       type="button"
                       className={`${styles.chip} ${isOn ? styles.on : styles.chipOff}`}
-                      title={`${fieldTitle(field, graph)} · ${field.apiKey} · ${fieldCounts[index]} relations`}
+                      title={`${fieldTitle(field, graph)} → ${targets.join(', ')} · ${field.apiKey} · ${fieldCounts[index]} relations`}
                       aria-pressed={isOn}
                       onClick={() => toggleIndex('fields', index)}
                     >
                       {fieldLabel(field)}
+                      <span className={styles.chipTarget}>
+                        {' → '}
+                        {targets.length === 1 ? targets[0] : `${targets.length} models`}
+                      </span>
                     </button>
                   );
                 })}
