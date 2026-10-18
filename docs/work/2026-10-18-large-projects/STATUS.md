@@ -2,7 +2,7 @@
 status: open
 phase: slice
 slice: V2
-step: plan
+step: close
 work: large-projects
 stack: react
 updated: 2026-10-18
@@ -31,3 +31,4 @@ description: "Make Grafo usable on projects with thousands of records and dozens
 - 2026-10-18 — V1 execute — T1–T3 done, reviews applied, crash on mount fixed — owner check on Acacia/Gestart — — —
 - 2026-10-18 — V1 close — owner checked on Acacia; two browser-only crashes fixed — V2 plan — — —
 - 2026-10-18 — V1.1 execute+close — strokes/arrows at screen size, neighbour label cap; harness checked — owner check, then V2 — — —
+- 2026-10-18 — V2 execute — search, Count/Name sort, Show all; controller reviewed the diff — owner check — — —
