@@ -146,6 +146,13 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 - Manual refresh button reloading data from the CMA.
 - Keyboard access to nodes (focusable, Enter selects/opens), deferred from V3.
 
+**Constraints from the V4 final review (for the V5 plan)**
+- Refresh: `Filters` hold model/field array indexes, so a refreshed `Graph` must either reset filters (and say so) or remap them by `apiKey`; keep the last graph on screen with a loading indicator instead of swapping the workspace for the spinner, or zoom and filters are lost on every refresh.
+- View state (`selectedId`, `query`, `labelMode`, `distance`) lives in `GraphWorkspace`; `GraphView` forwards each through its own effect to a dedicated renderer method (`setSelection`, `setLabels`, `setDistance`, `fit`, `relayout`), never through `update(visible)`. Zoom/fit/relayout buttons reach the renderer via `useImperativeHandle` on `GraphView`.
+- Every callback passed to `renderGraph` (`onOpen`, `onSelect`, `onHover`) goes through a ref, so the mount effect never re-runs on React renders.
+- Selection is validated against `visible` in `GraphWorkspace` (clear it when a filter hides the selected node).
+- Fit after filter changes should respect a `userMoved` flag (POC) once zoom controls exist.
+
 **Out**
 - Editing records from the plugin.
 
