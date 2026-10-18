@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { renderGraph, type RenderGraphHandle } from '../graph/renderGraph';
 import type { VisibleSet } from '../data/filterGraph';
 import type { prepareSimulation } from '../graph/prepareSimulation';
@@ -7,20 +7,30 @@ import styles from './GraphView.module.css';
 interface Props {
   data: ReturnType<typeof prepareSimulation>;
   visible: VisibleSet;
+  selectedId: string | null;
   modelName: (model: number) => string;
-  onSelect?: (id: string | null) => void;
+  onSelect: (id: string | null) => void;
 }
 
-const noop = () => {};
+export interface GraphViewHandle {
+  focusOn(id: string): void;
+}
 
-export default function GraphView({ data, visible, modelName, onSelect = noop }: Props) {
+const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
+  { data, visible, selectedId, modelName, onSelect },
+  ref,
+) {
   const svgRef = useRef<SVGSVGElement>(null);
-  // Read through a ref so a new callback never re-mounts the SVG.
+  // Read through refs so a new callback or value never re-mounts the SVG.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const handleRef = useRef<RenderGraphHandle | null>(null);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
+
+  useImperativeHandle(ref, () => ({ focusOn: (id) => handleRef.current?.focusOn(id) }), []);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -31,6 +41,8 @@ export default function GraphView({ data, visible, modelName, onSelect = noop }:
     });
     handleRef.current = handle;
     handle.update(visibleRef.current);
+    // A fresh renderer starts with nothing selected.
+    handle.setSelection(selectedIdRef.current);
     return () => {
       handle.destroy();
       handleRef.current = null;
@@ -41,5 +53,11 @@ export default function GraphView({ data, visible, modelName, onSelect = noop }:
     handleRef.current?.update(visible);
   }, [visible]);
 
+  useEffect(() => {
+    handleRef.current?.setSelection(selectedId);
+  }, [selectedId, visible]);
+
   return <svg ref={svgRef} className={styles.svg} />;
-}
+});
+
+export default GraphView;
