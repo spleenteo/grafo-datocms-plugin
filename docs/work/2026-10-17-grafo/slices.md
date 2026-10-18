@@ -18,7 +18,8 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 | V6 | Search and view controls | Title search, label modes, zoom/fit/relayout, distance, refresh |
 | V7 | UI tweaks | Outside selection on by default, readable arrows, animated focus on select, stats bar, help modal |
 | V8 | Starting models | An admin picks the models shown when Grafo opens; editors add the rest |
-| V9 | Marketplace release | README, cover image, package metadata, published to npm |
+| V9 | Hardening | Findings of the full codebase review: renderer and build performance, duplication, copy, deferred tests |
+| V10 | Marketplace release | README, cover image, package metadata, published to npm |
 
 ---
 
@@ -252,7 +253,24 @@ _Added 2026-10-18 from the owner's review after V6._
 **Done**
 - With "Testimonianza" as the only starting model on Gestart, Grafo opens on the 7 testimonials plus their linked records as context. Gate green.
 
-## V9 — Marketplace release
+## V9 — Hardening
+
+_Added 2026-10-18 after a full read-only codebase review (Fable): `reviews/2026-10-18-fable-codebase-review.md`. No Critical findings; security and role isolation verified clean._
+
+**In**
+- Renderer performance: per-update adjacency map; `seedEntering`, `paint()` and the focus box in O(degree); class diffs instead of full rewrites; `marker-end` only when it changes; one paint per frame (P1–P3, P5–P7).
+- Build performance: `extractLinks` iterates only relation-capable fields and reuses its collector (A1, A3, A5), measured before/after on Gestart.
+- Duplication and dead code (S1–S11), small data-layer nits (A2 wording, A4 memo key with the user, P8, P9).
+- Copy and comments (C1–C8).
+- Tests deferred from V6: fresh memo, generation guard, remap during render.
+
+**Out**
+- New features, visual changes beyond copy.
+
+**Done**
+- Gate green; same graph on Gestart (197 / 18 / 347, 3 requests); owner check shows no behaviour change; build time measured.
+
+## V10 — Marketplace release
 
 **In**
 - README (dev-oriented, terse): what it does, permissions, API usage, local development.

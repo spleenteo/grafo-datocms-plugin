@@ -28,7 +28,8 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - [x] V6 — Search and view controls
 - [x] V7 — UI tweaks
 - [ ] V8 — Starting models
-- [ ] V9 — Marketplace release
+- [ ] V9 — Hardening
+- [ ] V10 — Marketplace release
 
 ## Log
 
@@ -45,3 +46,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-18 — V6 close — search, label modes, view controls, in-place reload; 4 task reviews (3 fix rounds) + final review (4 fixes) — owner wants UI tweaks before V7 — — —
 - 2026-10-18 — V7 close — UI tweaks + two owner check rounds (reframing, distance, zoom animation/icons, relative size, label-aware fit) — V8 plan — — —
 - 2026-10-18 — rename — work slug, repo, npm name and branch renamed to Grafo (owner) — V8 close (owner check pending) — — —
+- 2026-10-18 — V9 opened — hardening from the Fable review; V8 still at close (owner check pending) — V9 execute — — —
