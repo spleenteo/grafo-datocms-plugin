@@ -52,24 +52,25 @@ export function deserializeFilters(
   startingKey: string,
 ): Filters | null {
   if (!isRecord(data)) return null;
-  const d = data;
-  if (d.v !== 1 || d.startingKey !== startingKey) return null;
-  if (!isStringArray(d.offModels) || !isStringArray(d.statuses)) return null;
+  if (data.v !== 1 || data.startingKey !== startingKey) return null;
+  if (!isStringArray(data.offModels) || !isStringArray(data.statuses)) return null;
   if (
-    !Array.isArray(d.offFields) ||
-    !d.offFields.every(
+    !Array.isArray(data.offFields) ||
+    !data.offFields.every(
       (e) => Array.isArray(e) && e.length === 2 && typeof e[0] === 'string' && typeof e[1] === 'boolean',
     )
   ) {
     return null;
   }
-  if (typeof d.showsOutside !== 'boolean' || typeof d.hidesOrphans !== 'boolean') return null;
-  const direction = DIRECTIONS.find((x) => x === d.direction);
+  if (typeof data.showsOutside !== 'boolean' || typeof data.hidesOrphans !== 'boolean') return null;
+  const direction = DIRECTIONS.find((x) => x === data.direction);
   if (direction === undefined) return null;
-  if (!d.statuses.every((s) => (NODE_STATUSES as readonly string[]).includes(s))) return null;
+  if (!data.statuses.every((s) => (NODE_STATUSES as readonly string[]).includes(s))) return null;
 
-  const offModels = new Set(d.offModels);
-  const offFields = new Set((d.offFields as [string, boolean][]).map(([k, p]) => fieldKey({ apiKey: k, isPseudo: p })));
+  const offModels = new Set(data.offModels);
+  const offFields = new Set(
+    (data.offFields as [string, boolean][]).map(([k, p]) => fieldKey({ apiKey: k, isPseudo: p })),
+  );
   const base = allFilters(graph);
   const models = new Set<number>();
   graph.models.forEach((m, i) => {
@@ -84,9 +85,9 @@ export function deserializeFilters(
     ...base,
     models,
     fields,
-    statuses: new Set(d.statuses as NodeStatus[]),
-    showsOutside: d.showsOutside,
+    statuses: new Set(data.statuses as NodeStatus[]),
+    showsOutside: data.showsOutside,
     direction,
-    hidesOrphans: d.hidesOrphans,
+    hidesOrphans: data.hidesOrphans,
   };
 }

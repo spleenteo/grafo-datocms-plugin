@@ -1,7 +1,7 @@
 import { Button } from 'datocms-react-ui';
 import { useEffect, useMemo, useState } from 'react';
 import { relationsOf, type Relation } from '../data/relationsOf';
-import { fieldLabel } from '../data/buildGraph';
+import { fieldLabel } from '../data/types';
 import type { Graph, GraphNode, NodeStatus } from '../data/types';
 import { modelColor } from '../graph/modelColor';
 import { STATUS_LABEL } from './labels';

@@ -98,7 +98,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
                 Save
               </Button>
             ) : (
-              <p className={styles.note}>Only administrators can change these settings.</p>
+              <p className={styles.note}>Only roles that can edit the schema can change these settings.</p>
             )}
           </FieldGroup>
         </Form>

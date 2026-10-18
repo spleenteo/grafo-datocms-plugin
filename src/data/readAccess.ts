@@ -1,5 +1,5 @@
 // Which models the current role can read. Conservative: anything unexpected
-// means "not full read", so the loader falls back to the nested, per-model path.
+// means "not full read", so the loader falls back to the nested listing over readable models.
 
 import type { Permissions } from './types';
 

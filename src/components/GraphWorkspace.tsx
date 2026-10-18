@@ -275,7 +275,7 @@ export default function GraphWorkspace({
   const stats =
     `${visible.coreIds.size} of ${graph.nodes.length} records` +
     (contextCount > 0 ? ` (+${contextCount} related)` : '') +
-    ` · ${visible.edgeIndexes.length} relations · ${requestCount} CMA requests` +
+    ` · ${visible.edgeIndexes.length} relations · ${requestCount} API ${requestCount === 1 ? 'call' : 'calls'}` +
     (isRefreshing ? ' · Reloading…' : refreshError ? ` · Reload failed: ${refreshError}` : '');
 
   return (
@@ -318,6 +318,7 @@ export default function GraphWorkspace({
           onFit={() => viewRef.current?.fit()}
           onRelayout={() => viewRef.current?.relayout()}
           stats={stats}
+          statsTitle="Content Management API calls for the last load, retries included"
           onReload={reload}
           isReloadDisabled={isRefreshing}
         />

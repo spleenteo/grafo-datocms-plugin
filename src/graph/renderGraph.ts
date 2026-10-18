@@ -44,7 +44,7 @@ export interface RenderGraphOptions {
   modelName: (model: number) => string;
   /** Node click or Enter/Space → its id; background click → null. The renderer does not change its own selection. */
   onSelect: (id: string | null) => void;
-  /** Initial view state, applied at mount without reheating. */
+  /** Initial label mode, distance and matches; later changes go through the handle. */
   labelMode?: LabelMode;
   distance?: number;
   matchIds?: ReadonlySet<string>;
@@ -587,12 +587,12 @@ export function renderGraph(
   let pill: SVGRectElement | null = null;
   function placePill(focus: string | null, remeasure: boolean) {
     const e = focus !== null ? nodeEls.get(focus) : undefined;
+    // Moving a focused element in the DOM drops keyboard focus.
+    if (e && e.g !== document.activeElement) select(e.g).raise();
     if (!e || !e.label) {
       pill?.remove();
       return;
     }
-    // Moving a focused element in the DOM drops keyboard focus.
-    if (e.g !== document.activeElement) select(e.g).raise();
     if (!remeasure && pill?.parentNode === e.g) return;
     if (!pill) {
       pill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -920,7 +920,7 @@ export function renderGraph(
     simulation.alpha(alpha).restart();
   }
 
-  // Drag (POC pattern on `event.active`): pin on `start`, reheat on the first
+  // Drag (d3-drag `event.active` counts live gestures): pin on `start`, reheat on the first
   // `drag` event of a gesture (not on `start`) so a plain click leaves the
   // layout alone, release on `end`. d3-drag counts the current gesture in
   // `active` during `drag` (but not during `start`/`end`), so "no other

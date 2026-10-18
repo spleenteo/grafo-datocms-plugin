@@ -1,6 +1,6 @@
 import { Button, ButtonGroup, ButtonGroupButton, SwitchField } from 'datocms-react-ui';
 import { memo, useMemo } from 'react';
-import { fieldLabel } from '../data/buildGraph';
+import { fieldLabel } from '../data/types';
 import { allFilters, type Filters } from '../data/filterGraph';
 import type { Graph, NodeStatus } from '../data/types';
 import { NODE_STATUSES } from '../data/types';

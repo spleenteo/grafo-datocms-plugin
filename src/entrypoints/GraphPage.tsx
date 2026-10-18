@@ -131,7 +131,7 @@ export default function GraphPage({ ctx }: { ctx: RenderPageCtx }) {
   if (!apiToken) {
     body = (
       <p className={styles.error}>
-        Grant the currentUserAccessToken permission in the plugin settings.
+        Grafo needs the currentUserAccessToken permission. Ask an administrator to grant it in Configuration → Plugins → Grafo.
       </p>
     );
   } else if (state.status === 'loading') {

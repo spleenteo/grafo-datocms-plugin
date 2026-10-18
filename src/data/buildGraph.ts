@@ -15,10 +15,6 @@ import { fieldKey, isRecord } from './types';
 
 export const PARENT_FIELD_KEY = 'parent';
 
-/** Display name of a field; the tree pseudo-field has no api key worth showing. */
-export const fieldLabel = (field: GraphField): string =>
-  field.isPseudo ? 'parent (tree)' : field.apiKey;
-
 function firstNonEmpty(value: unknown, locales: string[]): string {
   if (typeof value === 'string') return value.trim();
   if (isRecord(value)) {

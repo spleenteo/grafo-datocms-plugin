@@ -75,3 +75,7 @@ export type Graph = {
   readonly nodes: readonly GraphNode[];
   readonly edges: readonly GraphEdge[];
 };
+
+/** Display name of a field; the tree pseudo-field has no api key worth showing. */
+export const fieldLabel = (field: GraphField): string =>
+  field.isPseudo ? 'parent (tree)' : field.apiKey;

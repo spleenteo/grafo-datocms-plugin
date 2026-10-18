@@ -64,81 +64,22 @@ The plugin makes no write calls.
 | Full read | `1 + max(1, ceil(records / 500)) + max(1, ceil(blocks / 500))` |
 | Restricted | `1 + max(1, ceil(records / 30))` |
 
+Each listing is repeated per chunk of 200 models, with at least one request per chunk. The count shown in the status bar is API calls, rate-limit retries included.
+
 The first request fetches the schema: `site` with `include=item_types,item_types.fields`. The results are memoised for the page session, keyed by environment, endpoint, effective permissions and excluded models. Reload bypasses the memo. The schema, meaning model and field names, is always downloaded.
-
-### Why not the Content Delivery API
-
-The CDA would be cheaper per call and would return the same graph. However, it rejects the user session token with `401 INVALID_AUTHORIZATION_HEADER`. A project CDA token would see every record regardless of the editor's role, which breaks role isolation.
 
 ## Stored state
 
-The editor's filters are saved in `localStorage` under `grafo:filters:v1:<siteId>:<environment>:<userType>:<userId>`. They are saved by API key, with switched-off models and fields stored as an exclusion list, so models and fields added later show up switched on. When an admin changes the starting models, the stored filters are ignored once. The key is removed when the filters match the starting ones. Grafo works normally when storage is blocked; it just doesn't remember anything.
+The editor's filters are saved in `localStorage` under `grafo:filters:v1:<siteId>:<environment>:<userType>:<userId>`. Filters are stored by model and field API key, with switched-off models and fields stored as an exclusion list, so models and fields added later show up switched on. When an admin changes the starting models, the stored filters are ignored once. The key is removed when the filters match the starting ones. Grafo works normally when storage is blocked; it just doesn't remember anything.
 
 ![Help modal](https://raw.githubusercontent.com/spleenteo/grafo-datocms-plugin/main/assets/screenshots/help.png)
 
-## Development
-
-Requirements: Node 20.19+ or 22.12+ (Vite 8), and a DatoCMS project where you can create private plugins.
-
-```sh
-npm install
-npm run dev   # http://localhost:5173/
-```
-
-Install the dev build as a private plugin:
-
-1. In DatoCMS go to Configuration → Plugins → Add new → Create a new private plugin.
-2. Set the entry point URL to `http://localhost:5173/`.
-3. In the plugin's permissions tab, grant `currentUserAccessToken`.
-4. Reload the DatoCMS page completely after changes to `src/main.tsx`. Hooks such as the navigation tab are read when the plugin boots.
-
-### Scripts
-
-| Script | Does |
-| --- | --- |
-| `npm run dev` | Vite dev server |
-| `npm run build` | Typecheck, then production build to `dist/` |
-| `npm run typecheck` | `tsc -b` |
-| `npm test` | Vitest |
-| `npm run preview` | Serve the production build |
-
-Gate before every commit: `npm run typecheck && npm test && npm run build`.
-
-### Structure
-
-```
-src/
-  main.tsx              connect(): mainNavigationTabs, renderPage, renderModal, renderConfigScreen
-  entrypoints/          GraphPage, ConfigScreen, HelpModal
-  components/           GraphWorkspace (state), GraphView (renderer bridge), FilterRail, Inspector, CanvasControls
-  data/                 CMA loading and pure graph logic: parseSchema, readAccess, visibleModelPlan,
-                        extractLinks, buildGraph, filterGraph, expandAround, startingFilters,
-                        remapFilters, storedFilters, pluginSettings, relationsOf, searchTitles
-  graph/                D3 renderer (renderGraph) and pure helpers: prepareSimulation, autoDistance,
-                        modelColor, recordEditPath
-```
-
-- `src/data/` and `src/graph/` don't import React.
-- `loadGraph` is the only module that calls the API.
-- Tests cover the pure modules only. Components and D3 rendering are checked by hand.
-- Design decisions live in `docs/decisions-log/`, and the development log in `docs/work/`.
-
-### Stack
-
-`datocms-plugin-sdk`, `datocms-react-ui`, `@datocms/cma-client-browser`, React 19, `d3-force`, `d3-selection`, `d3-zoom`, `d3-drag`, `d3-transition`, Vite, Vitest, TypeScript.
 
 ## Limitations
 
 - The whole readable dataset loads when Grafo opens. Projects with tens of thousands of records need many requests. For restricted roles that is one request per 30 records.
 - Rendering is SVG. Above about 1000 visible nodes the layout animates instead of pre-computing, and hover highlighting gets slower.
 - Localized relation fields count the union of the links across all locales. Titles use the first locale that has a value.
-
-## Releasing
-
-1. Bump `version` in `package.json`.
-2. Run `npm run build`.
-3. Run `npm pack --dry-run` and check that it lists `dist/`, `assets/cover.png` and `assets/preview.mp4`.
-4. Run `npm publish`. The `datocms-plugin` keyword lists the package in the DatoCMS marketplace.
 
 ## License
 

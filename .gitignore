@@ -5,3 +5,5 @@ dist/
 .DS_Store
 poc/
 Idea.md
+.superpowers/
+.claude/worktrees/
