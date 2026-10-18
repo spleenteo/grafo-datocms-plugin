@@ -121,19 +121,19 @@ export default function CanvasControls(props: Props) {
           <span className={styles.distanceValue}>{distance.toFixed(1)}×</span>
         </label>
         <div className={`${styles.zoomStack} ${styles.auto}`}>
-          <button type="button" onClick={props.onZoomIn}>
+          <button type="button" title="Zoom in" onClick={props.onZoomIn}>
             <span aria-hidden="true">+</span>
             <span className={styles.srOnly}>Zoom in</span>
           </button>
-          <button type="button" onClick={props.onZoomOut}>
+          <button type="button" title="Zoom out" onClick={props.onZoomOut}>
             <span aria-hidden="true">−</span>
             <span className={styles.srOnly}>Zoom out</span>
           </button>
-          <button type="button" onClick={props.onFit}>
+          <button type="button" title="Fit to screen" onClick={props.onFit}>
             <span aria-hidden="true">⤢</span>
             <span className={styles.srOnly}>Fit to screen</span>
           </button>
-          <button type="button" onClick={props.onRelayout}>
+          <button type="button" title="Relayout" onClick={props.onRelayout}>
             <span aria-hidden="true">↻</span>
             <span className={styles.srOnly}>Relayout</span>
           </button>
