@@ -48,6 +48,8 @@ export interface RenderGraphOptions {
   initialPositions?: ReadonlyMap<string, Point>;
   initialTransform?: ViewTransform;
   initialUserMoved?: boolean;
+  /** Visible set at mount (default: every node); a following `update()` with the same set is a no-op. */
+  initialVisible?: VisibleSet;
 }
 
 export interface RenderGraphHandle {
@@ -170,9 +172,9 @@ export function renderGraph(
   }
 
   // Mutable render state: reassigned on every update, read by draw/fit.
-  let visibleNodes: SimNode[] = allNodes;
-  let visibleLinks: RenderLink[] = allLinks;
-  let visibleIds = new Set(allNodes.map((n) => n.id));
+  let visibleNodes: SimNode[] = [];
+  let visibleLinks: RenderLink[] = [];
+  let visibleIds = new Set<string>();
   let selectedId: string | null = null;
   let hoveredId: string | null = null;
   let labelMode: LabelMode = options.labelMode ?? 'smart';
@@ -187,11 +189,28 @@ export function renderGraph(
   // Last smart threshold on zoom, so a zoom only repaints labels when crossing it.
   let wasSmartScale = false;
   let destroyed = false;
-  let lastApplied: VisibleSet = {
+  let lastApplied: VisibleSet = options.initialVisible ?? {
     coreIds: new Set(allNodes.map((n) => n.id)),
     contextIds: new Set(),
     edgeIndexes: allLinks.map((l) => l.edge),
   };
+  setVisible(lastApplied);
+
+  function setVisible(visible: VisibleSet) {
+    const isVisible = (id: string) => visible.coreIds.has(id) || visible.contextIds.has(id);
+    // Graph order, not set order, so the DOM order is stable across updates.
+    visibleNodes = allNodes.filter((n) => isVisible(n.id));
+    visibleIds = new Set(visibleNodes.map((n) => n.id));
+    visibleLinks = [];
+    for (const edge of visible.edgeIndexes) {
+      const l = linkByEdge.get(edge);
+      // Self-links have no renderer link. A link with a hidden end is
+      // skipped too: its ends may already be node objects so forceLink would
+      // not throw, but it would pull on a node outside the simulation.
+      if (!l || !isVisible(endId(l.source)) || !isVisible(endId(l.target))) continue;
+      visibleLinks.push(l);
+    }
+  }
 
   const svg = select(svgEl);
   svg.selectAll('*').remove();
@@ -450,14 +469,16 @@ export function renderGraph(
     svg.call(zoomBehavior.transform, zoomIdentity.translate(tx, ty).scale(k));
   }
 
-  const linkForce = forceLink<SimNode, RenderLink>(allLinks)
+  // Built on the initial visible subset; nodes outside it get their x/y
+  // from d3 when an update first adds them.
+  const linkForce = forceLink<SimNode, RenderLink>(visibleLinks)
     .id((d) => d.id)
     .strength(0.55);
   const chargeForce = forceManyBody<SimNode>();
   const xForce = forceX<SimNode>(0);
   const yForce = forceY<SimNode>(0);
   const collideForce = forceCollide<SimNode>();
-  const simulation = forceSimulation<SimNode, RenderLink>(allNodes)
+  const simulation = forceSimulation<SimNode, RenderLink>(visibleNodes)
     .force('link', linkForce)
     .force('charge', chargeForce)
     .force('x', xForce)
@@ -482,7 +503,12 @@ export function renderGraph(
   simulation.on('tick', draw).on('end', () => {
     const mode = fitOnEnd;
     fitOnEnd = 'none';
-    if (mode === 'always' || (mode === 'unlessMoved' && !userMoved)) fit();
+    if (mode === 'always') {
+      userMoved = false;
+      fit();
+    } else if (mode === 'unlessMoved' && !userMoved) {
+      fit();
+    }
   });
 
   // Drag (POC pattern on `event.active`): pin on `start`, reheat on the first
@@ -515,13 +541,13 @@ export function renderGraph(
       d.fy = null;
     });
 
-  join(allNodes, allLinks, lastApplied.contextIds);
+  join(visibleNodes, visibleLinks, lastApplied.contextIds);
   paint();
 
-  if (allNodes.length > 0) {
+  if (visibleNodes.length > 0) {
     if (initialPositions) {
       simulation.alpha(UPDATE_ALPHA).restart();
-    } else if (allNodes.length <= PRETICK_MAX_NODES) {
+    } else if (visibleNodes.length <= PRETICK_MAX_NODES) {
       simulation.alpha(1);
       simulation.tick(PRETICKS);
       draw();
@@ -536,20 +562,7 @@ export function renderGraph(
     update(visible: VisibleSet) {
       if (destroyed || sameVisibleSet(visible, lastApplied)) return;
       lastApplied = visible;
-
-      const isVisible = (id: string) => visible.coreIds.has(id) || visible.contextIds.has(id);
-      // Graph order, not set order, so the DOM order is stable across updates.
-      visibleNodes = allNodes.filter((n) => isVisible(n.id));
-      visibleIds = new Set(visibleNodes.map((n) => n.id));
-      visibleLinks = [];
-      for (const edge of visible.edgeIndexes) {
-        const l = linkByEdge.get(edge);
-        // Self-links have no renderer link. A link with a hidden end is
-        // skipped too: its ends are already node objects so forceLink would
-        // not throw, but it would pull on a node outside the simulation.
-        if (!l || !isVisible(endId(l.source)) || !isVisible(endId(l.target))) continue;
-        visibleLinks.push(l);
-      }
+      setVisible(visible);
 
       // Order matters: nodes first (re-indexes them, keeps x/y/vx/vy), then
       // links (forceLink resolves ends against the current nodes).
@@ -583,6 +596,8 @@ export function renderGraph(
       const w = svgEl.clientWidth;
       const h = svgEl.clientHeight;
       if (!n || !w || !h) return;
+      // A settling fit would overwrite the focus.
+      fitOnEnd = 'none';
       const k = Math.max(zoomTransform(svgEl).k, FOCUS_MIN_SCALE);
       svg.call(
         zoomBehavior.transform,

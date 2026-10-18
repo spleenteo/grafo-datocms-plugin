@@ -38,8 +38,10 @@ const GraphView = forwardRef<GraphViewHandle, Props>(function GraphView(
     const handle = renderGraph(svg, data, {
       modelName,
       onSelect: (id) => onSelectRef.current(id),
+      initialVisible: visibleRef.current,
     });
     handleRef.current = handle;
+    // A no-op unless the visible set changed since the mount read it.
     handle.update(visibleRef.current);
     // A fresh renderer starts with nothing selected.
     handle.setSelection(selectedIdRef.current);
