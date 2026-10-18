@@ -1,6 +1,7 @@
 import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { allFilters, filterGraph } from '../data/filterGraph';
+import { remapFilters } from '../data/remapFilters';
 import { nodeIndexById } from '../data/relationsOf';
 import type { Graph } from '../data/types';
 import { recordEditPath } from '../graph/recordEditPath';
@@ -16,6 +17,9 @@ import styles from './GraphWorkspace.module.css';
 interface Props {
   graph: Graph;
   requestCount: number;
+  isRefreshing: boolean;
+  refreshError: string | null;
+  onReload: () => void;
   ctx: RenderPageCtx;
 }
 
@@ -27,8 +31,24 @@ function isTextEntry(target: EventTarget | null): boolean {
   );
 }
 
-export default function GraphWorkspace({ graph, requestCount, ctx }: Props) {
-  const [filters, setFilters] = useState(() => allFilters(graph));
+export default function GraphWorkspace({
+  graph,
+  requestCount,
+  isRefreshing,
+  refreshError,
+  onReload,
+  ctx,
+}: Props) {
+  const [storedFilters, setFilters] = useState(() => allFilters(graph));
+  // A refreshed graph re-indexes models and fields: remap the filters in this
+  // same render, so `filterGraph` never pairs the new graph with old indexes.
+  const [prevGraph, setPrevGraph] = useState(graph);
+  let filters = storedFilters;
+  if (graph !== prevGraph) {
+    filters = remapFilters(prevGraph, graph, storedFilters);
+    setPrevGraph(graph);
+    setFilters(filters);
+  }
   const data = useMemo(() => prepareSimulation(graph), [graph]);
   const visible = useMemo(() => filterGraph(graph, filters), [graph, filters]);
   const modelName = useCallback(
@@ -108,7 +128,8 @@ export default function GraphWorkspace({ graph, requestCount, ctx }: Props) {
     ` · ${visible.edgeIndexes.length} relations · ${requestCount} CMA requests` +
     (filters.showsOutside && isEverythingSelected
       ? ' · All models are selected: nothing is outside the selection.'
-      : '');
+      : '') +
+    (isRefreshing ? ' · Reloading…' : refreshError ? ` · Reload failed: ${refreshError}` : '');
 
   return (
     <div className={styles.workspace}>
@@ -144,7 +165,8 @@ export default function GraphWorkspace({ graph, requestCount, ctx }: Props) {
           onFit={() => viewRef.current?.fit()}
           onRelayout={() => viewRef.current?.relayout()}
           stats={stats}
-          isReloadDisabled
+          onReload={onReload}
+          isReloadDisabled={isRefreshing}
         />
       </div>
       <Inspector

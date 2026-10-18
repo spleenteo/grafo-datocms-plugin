@@ -15,6 +15,8 @@ export type LoadGraphOptions = {
   environment: string;
   baseUrl?: string;
   permissions: RolePermissions;
+  /** Bypasses the memo; a success replaces the entry, a failure leaves it alone. */
+  fresh?: boolean;
 };
 
 export type LoadGraphResult = { graph: Graph; requestCount: number };
@@ -122,6 +124,14 @@ async function loadGraphUncached(options: LoadGraphOptions): Promise<LoadGraphRe
 
 export function loadGraph(options: LoadGraphOptions): Promise<LoadGraphResult> {
   const key = loadGraphKey(options.environment, options.baseUrl, options.permissions);
+  if (options.fresh) {
+    const promise = loadGraphUncached(options);
+    promise.then(
+      (result) => memo.set(key, Promise.resolve(result)),
+      () => {},
+    );
+    return promise;
+  }
   const cached = memo.get(key);
   if (cached) return cached;
   const promise = loadGraphUncached(options);
