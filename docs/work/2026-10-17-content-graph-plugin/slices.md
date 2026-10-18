@@ -131,6 +131,12 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 **Done**
 - Each control reshapes the graph without reloading data (no new CMA calls). Gate green.
 
+**Deviations found while planning V4**
+- Product renamed **Grafo** (design file, 2026-10-18): tab label, plugin title, page title and docs updated in a separate commit before V4; repo, npm name and work slug unchanged.
+- Visual reference is the design's filter rail: model rows with counts (not chips), status and field chips without visible counts (count in tooltip), switches for outside selection and orphans. All/None, direction and Reset are kept from the mandate although the design doesn't show them.
+- The page `h1` goes away in the done state (the design has none).
+- The renderer update seam is T2, after the pure filter (T1), so `update` consumes the filter's real output type.
+
 ## V5 — Inspector, search, view controls
 
 **In**
