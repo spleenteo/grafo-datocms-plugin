@@ -92,3 +92,16 @@ Root causes (verified in code and with a d3-force run on Gestart, `.superpowers/
 - Help modal shortcut list unchanged; its "Relayout" mention (if any) renamed to "Rearrange layout".
 
 **Verify / Done:** gate green. Commit.
+
+### Task 7 (T7): Size by relations relative to the view, label-aware fit `critical`
+
+Owner check 2: labels fall outside the frame after a reframe; nodes look all the same size. Measured on Gestart (`.superpowers/v7-debug/radii.ts`): median degree 0 (r 5), p90 r 9.5, max r 16; with Testimonianza isolated radii span 5–11.4, mostly 5–8. `fitTransform()` bounds use only `x ± r`, ignoring labels that extend up to ~30 characters to the right.
+
+**Files:** modify `src/graph/prepareSimulation.ts` (+ test), `src/graph/renderGraph.ts`.
+
+**What:**
+- `relativeRadius(degree: number, maxDegree: number): number` (pure, exported from `prepareSimulation.ts`) = `4 + 16 * Math.sqrt(degree / maxDegree)`, with `maxDegree <= 0 → 4`. `degree` stays the record's total relations (self-links excluded).
+- The renderer computes `r` for visible nodes from the max degree among the visible ones, at mount and on every `update()`; changed radii update every derived element (dot, `updated` ring at `r + 3.5`, halo at `r + 7`, label x offset `r + 5`, link-end shortening, collide radius, charge `−(70 + 9r)·D²`) and re-initialise the forces (`simulation.nodes()` already does it after `update`).
+- `fitTransform()` and the focus-scale maths include label extents: for each visible node, right edge = `x + r + 5 + labelWidth(title)` where `labelWidth` = `min(chars, 30) · 6.2` (11 px font estimate, chars by code points, `…` counted), applied for nodes whose label is currently shown; vertical extent ± max(r, 8).
+
+**Verify:** `relativeRadius` tests: 0 → 4; max → 20; quarter of max → 12; `maxDegree` 0 → 4. Gate green. Commit.
