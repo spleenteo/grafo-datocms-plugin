@@ -13,7 +13,7 @@ import { select } from 'd3-selection';
 import 'd3-transition';
 import type { EnterElement, Selection } from 'd3-selection';
 import { zoom, zoomIdentity, zoomTransform } from 'd3-zoom';
-import type { D3ZoomEvent } from 'd3-zoom';
+import type { D3ZoomEvent, ZoomTransform } from 'd3-zoom';
 import { sameVisibleSet } from '../data/filterGraph';
 import type { VisibleSet } from '../data/filterGraph';
 import styles from './graph.module.css';
@@ -69,12 +69,17 @@ export interface RenderGraphHandle {
   setLabelMode(mode: LabelMode): void;
   /** Search matches: labelled, and the rest dimmed when nothing has focus. An empty set clears. No-op when the content is unchanged. */
   setQuery(matchIds: ReadonlySet<string>): void;
-  /** +/− buttons: an explicit user zoom, so it sets `userMoved`. Interrupts a running focus transition. */
+  /** +/− buttons: an explicit user zoom (250 ms), so it sets `userMoved`. Interrupts a running transition. */
   zoomBy(factor: number): void;
-  /** Fits the visible nodes and resets `userMoved`. Interrupts a running focus transition. */
+  /** Animated fit (450 ms) of the visible nodes; resets `userMoved`. Interrupts a running transition. */
   fit(): void;
-  /** Random restart of the layout, then fit; resets `userMoved`. */
+  /** Random restart of the layout, then an animated camera fit; resets `userMoved`. */
   relayout(): void;
+  /**
+   * Explicit "show me this": resets `userMoved` so the next `update()` follows and fits even after a
+   * user zoom. When no update follows (same visible set), fits right away (animated).
+   */
+  reframe(): void;
   /** Node distance multiplier; reheats at alpha 0.9. No-op when the value does not change. */
   setDistance(d: number): void;
   /** x/y of every node known to this mount, visible or not. */
@@ -97,6 +102,11 @@ const FOCUS_PADDING = 60;
 const FOCUS_SCALE_MIN = 0.5;
 const FOCUS_SCALE_MAX = 2;
 const FOCUS_DURATION = 450;
+const FIT_DURATION = 450;
+const ZOOM_DURATION = 250;
+// Camera follow during a settle: ease factor per tick, active while alpha is above the floor.
+const FOLLOW_EASE = 0.12;
+const FOLLOW_MIN_ALPHA = 0.05;
 // The arrow tip passes the line end by (10 − refX) viewBox units; at the `hi`
 // marker size (6 px per 10 units) that is 1.8 px, added to the end offset.
 const ARROW_REF_X = 7;
@@ -117,6 +127,13 @@ function sameIdSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
   if (a.size !== b.size) return false;
   for (const id of a) if (!b.has(id)) return false;
   return true;
+}
+
+function reducedMotion(): boolean {
+  return (
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
 }
 
 function labelText(title: string): string {
@@ -472,10 +489,11 @@ export function renderGraph(
       : zoomIdentity,
   );
 
-  function fit() {
+  // Transform that fits the visible nodes in the viewport; null when there is nothing to fit.
+  function fitTransform(): ZoomTransform | null {
     const w = svgEl.clientWidth;
     const h = svgEl.clientHeight;
-    if (!w || !h || visibleNodes.length === 0) return;
+    if (!w || !h || visibleNodes.length === 0) return null;
     let x0 = Infinity;
     let y0 = Infinity;
     let x1 = -Infinity;
@@ -495,7 +513,31 @@ export function renderGraph(
     const k = Math.max(0.1, Math.min(FIT_MAX_SCALE, availW / bw, availH / bh));
     const tx = w / 2 - (k * (x0 + x1)) / 2;
     const ty = h / 2 - (k * (y0 + y1)) / 2;
-    svg.call(zoomBehavior.transform, zoomIdentity.translate(tx, ty).scale(k));
+    return zoomIdentity.translate(tx, ty).scale(k);
+  }
+
+  // Programmatic (no sourceEvent), so userMoved stays as is. Animated unless
+  // reduced motion; a user gesture, focusOn or destroy() interrupts it.
+  function fit(animated = false) {
+    const t = fitTransform();
+    if (!t) return;
+    svg.interrupt();
+    if (animated && !reducedMotion()) {
+      svg.transition().duration(FIT_DURATION).call(zoomBehavior.transform, t);
+    } else {
+      svg.call(zoomBehavior.transform, t);
+    }
+  }
+
+  // One step of the camera follow: ease the current transform toward the fit target.
+  function followStep() {
+    const target = fitTransform();
+    if (!target) return;
+    const cur = zoomTransform(svgEl);
+    const k = cur.k + (target.k - cur.k) * FOLLOW_EASE;
+    const x = cur.x + (target.x - cur.x) * FOLLOW_EASE;
+    const y = cur.y + (target.y - cur.y) * FOLLOW_EASE;
+    svg.call(zoomBehavior.transform, zoomIdentity.translate(x, y).scale(k));
   }
 
   // Built on the initial visible subset; nodes outside it get their x/y
@@ -515,30 +557,56 @@ export function renderGraph(
     .force('collide', collideForce)
     .stop();
 
-  // Node distance D (POC `applyForces`): one multiplier for link length,
-  // repulsion, centring and collision padding.
+  // Node distance D: link length and collision padding scale with D, charge
+  // with D² against a constant centring pull, so spacing grows linearly and
+  // the shape (core vs context links) stays the same.
   function applyForces() {
     const D = distance;
     linkForce.distance(40 * D);
-    chargeForce.strength((d) => -(70 + d.r * 9) * D);
-    xForce.strength(0.05 / Math.max(D, 0.6));
-    yForce.strength(0.05 / Math.max(D, 0.6));
+    chargeForce.strength((d) => -(70 + d.r * 9) * D * D);
+    xForce.strength(0.05);
+    yForce.strength(0.05);
     collideForce.radius((d) => d.r + 2 + 2 * D);
   }
   applyForces();
 
   // 'unlessMoved': settles started by update/distance; 'always': animated relayout.
   let fitOnEnd: 'none' | 'unlessMoved' | 'always' = 'none';
-  simulation.on('tick', draw).on('end', () => {
-    const mode = fitOnEnd;
-    fitOnEnd = 'none';
-    if (mode === 'always') {
-      userMoved = false;
-      fit();
-    } else if (mode === 'unlessMoved' && !userMoved) {
-      fit();
-    }
-  });
+  // Camera follow for the current settle: set by update/setDistance/relayout
+  // when not userMoved and not reduced motion; cleared by a user gesture
+  // (userMoved), focusOn, fit and at `end`.
+  let follow = false;
+  // reframe() waiting for an update(); checked one frame later.
+  let reframePending = false;
+  let reframeFrame: number | null = null;
+  simulation
+    .on('tick', () => {
+      draw();
+      if (!follow) return;
+      if (userMoved) {
+        follow = false;
+        return;
+      }
+      if (simulation.alpha() > FOLLOW_MIN_ALPHA) followStep();
+    })
+    .on('end', () => {
+      const mode = fitOnEnd;
+      fitOnEnd = 'none';
+      follow = false;
+      if (mode === 'always') {
+        userMoved = false;
+        fit(true);
+      } else if (mode === 'unlessMoved' && !userMoved) {
+        fit(true);
+      }
+    });
+
+  // Settle started by update/setDistance: fit at end unless moved, follow meanwhile.
+  function settle(alpha: number) {
+    fitOnEnd = 'unlessMoved';
+    follow = !userMoved && !reducedMotion();
+    simulation.alpha(alpha).restart();
+  }
 
   // Drag (POC pattern on `event.active`): pin on `start`, reheat on the first
   // `drag` event of a gesture (not on `start`) so a plain click leaves the
@@ -603,14 +671,15 @@ export function renderGraph(
       if (selectedId !== null && !visibleIds.has(selectedId)) selectedId = null;
       paint();
 
+      reframePending = false;
       if (visibleNodes.length === 0) {
         fitOnEnd = 'none';
+        follow = false;
         simulation.stop();
         return;
       }
       draw();
-      fitOnEnd = 'unlessMoved';
-      simulation.alpha(UPDATE_ALPHA).restart();
+      settle(UPDATE_ALPHA);
     },
     setSelection(id: string | null) {
       if (destroyed) return;
@@ -625,8 +694,10 @@ export function renderGraph(
       const w = svgEl.clientWidth;
       const h = svgEl.clientHeight;
       if (!n || !w || !h) return;
-      // A settling fit would overwrite the focus.
+      // A settling fit or follow would overwrite the focus.
       fitOnEnd = 'none';
+      follow = false;
+      reframePending = false;
       const nx = n.x ?? 0;
       const ny = n.y ?? 0;
       // Neighbours = the other end of a visible link (same rule as paint()).
@@ -658,10 +729,7 @@ export function renderGraph(
       const target = zoomIdentity.translate(w / 2 - k * nx, h / 2 - k * ny).scale(k);
       // Programmatic: the zoom events carry no sourceEvent, so userMoved stays as is.
       svg.interrupt();
-      const reduced =
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (reduced) {
+      if (reducedMotion()) {
         svg.call(zoomBehavior.transform, target);
       } else {
         svg.transition().duration(FOCUS_DURATION).call(zoomBehavior.transform, target);
@@ -681,17 +749,39 @@ export function renderGraph(
     zoomBy(factor: number) {
       if (destroyed) return;
       userMoved = true;
-      svg.call(zoomBehavior.scaleBy, factor);
+      follow = false;
+      svg.interrupt();
+      svg
+        .transition()
+        .duration(reducedMotion() ? 0 : ZOOM_DURATION)
+        .call(zoomBehavior.scaleBy, factor);
     },
     fit() {
       if (destroyed) return;
       userMoved = false;
-      fit();
+      // The explicit fit wins over the follow; a running settle still fits at end.
+      follow = false;
+      fit(true);
+    },
+    reframe() {
+      if (destroyed) return;
+      userMoved = false;
+      reframePending = true;
+      if (reframeFrame !== null) cancelAnimationFrame(reframeFrame);
+      // The filter change reaches update() through a React effect; if none
+      // arrives by the next frame the visible set did not change.
+      reframeFrame = requestAnimationFrame(() => {
+        reframeFrame = null;
+        if (destroyed || !reframePending) return;
+        reframePending = false;
+        if (!userMoved) fit(true);
+      });
     },
     relayout() {
       if (destroyed) return;
       simulation.stop();
       fitOnEnd = 'none';
+      follow = false;
       userMoved = false;
       if (visibleNodes.length === 0) return;
       for (const n of allNodes) {
@@ -708,10 +798,11 @@ export function renderGraph(
       if (visibleNodes.length <= PRETICK_MAX_NODES) {
         simulation.tick(PRETICKS);
         draw();
-        fit();
+        fit(true);
       } else {
         draw();
         fitOnEnd = 'always';
+        follow = !reducedMotion();
         simulation.restart();
       }
     },
@@ -720,8 +811,7 @@ export function renderGraph(
       distance = d;
       applyForces();
       if (visibleNodes.length === 0) return;
-      fitOnEnd = 'unlessMoved';
-      simulation.alpha(DISTANCE_ALPHA).restart();
+      settle(DISTANCE_ALPHA);
     },
     positions() {
       const out = new Map<string, Point>();
@@ -736,6 +826,10 @@ export function renderGraph(
     },
     destroy() {
       destroyed = true;
+      follow = false;
+      reframePending = false;
+      if (reframeFrame !== null) cancelAnimationFrame(reframeFrame);
+      reframeFrame = null;
       hoveredId = null;
       selectedId = null;
       pendingReheat.clear();
