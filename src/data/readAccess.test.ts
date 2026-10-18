@@ -100,4 +100,32 @@ describe('readAccess', () => {
     expect(ids(r)).toEqual([]);
     expect(r.isFullRead).toBe(false);
   });
+
+  it('localized or locale-scoped entries are not full read', () => {
+    const r = run([pos({ localization_scope: 'localized', locale: 'it' })]);
+    expect(r.isFullRead).toBe(false);
+    expect(run([pos({ localization_scope: 'all', locale: null })]).isFullRead).toBe(true);
+  });
+
+  it('unknown key with a value is not full read', () => {
+    expect(run([pos({ something_new: 'x' })]).isFullRead).toBe(false);
+    expect(run([pos({ something_new: null })]).isFullRead).toBe(true);
+  });
+
+  it('to_stage set is not full read', () => {
+    expect(run([pos({ to_stage: 's2' })]).isFullRead).toBe(false);
+  });
+
+  it('on_creator role is readable, not full read', () => {
+    const r = run([pos({ on_creator: 'role' })]);
+    expect(ids(r)).toEqual(models);
+    expect(r.isFullRead).toBe(false);
+  });
+
+  it('malformed negative entry covers every model', () => {
+    expect(ids(run([pos()], [42]))).toEqual([]);
+    expect(ids(run([pos()], [{ action: 'read', environment: 7 }]))).toEqual([]);
+    expect(ids(run([pos()], [{ action: 'read', environment: ENV, item_type: 5 }]))).toEqual([]);
+    expect(ids(run([pos()], [{ action: 3, environment: 'other' }]))).toEqual(models);
+  });
 });
