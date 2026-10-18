@@ -16,7 +16,9 @@ No shaping doc: the behaviour reference is the POC (`poc/gestart-graph.html`, lo
 | V4 | Filter rail | Models, status and relation filters reshape the graph live |
 | V5 | Role isolation, selection, inspector | A role sees only what it may read; clicking a node highlights its relations and opens the inspector |
 | V6 | Search and view controls | Title search, label modes, zoom/fit/relayout, distance, refresh |
-| V7 | Marketplace release | README, cover image, package metadata, published to npm |
+| V7 | UI tweaks | Outside selection on by default, readable arrows, animated focus on select, stats bar, help modal |
+| V8 | Starting models | An admin picks the models shown when Grafo opens; editors add the rest |
+| V9 | Marketplace release | README, cover image, package metadata, published to npm |
 
 ---
 
@@ -205,7 +207,39 @@ _Split from the former V5 on 2026-10-18 (too many tasks for one plan): search, l
 - Rulings: +/− count as user zoom; review fixes applied without the first stop (owner asked); `paint()` profiling deferred.
 - Deferred: relayout above 1000 nodes overrides user zoom during the settle; "Reloading…"/"Reload failed" not announced; tests for the fresh memo, generation guard and remap during render (proposed as V7 hardening).
 
-## V7 — Marketplace release
+## V7 — UI tweaks
+
+_Added 2026-10-18 from the owner's review after V6._
+
+**In**
+- "Relations outside selection" on by default (and after Reset), direction Both.
+- Arrows readable: smaller arrowheads not scaled by stroke width, thinner and quieter links; focused relations stand out without getting heavy.
+- Selecting a node (click, keyboard, search Enter, inspector row) brings it to the centre with a smooth animation, zoomed to include its relations; honours `prefers-reduced-motion`.
+- Stats line no longer squeezed (bottom bar layout), "all models selected" hint moved next to the toggle.
+- No text selection on the rail when double-clicking rows.
+- Help button in the left rail opening a DatoCMS modal with keyboard shortcuts and a short editor help.
+
+**Out**
+- Starting models (V8). Showing blocks as nodes (dropped: the relation through a block is already drawn, attributed to the record's field).
+- V6's deferred tests (fresh memo, generation guard, remap during render): moved to V9 hardening.
+
+**Done**
+- Each item visible on Gestart in both themes. Gate green.
+
+## V8 — Starting models
+
+**In**
+- Plugin config screen: an admin picks the models switched on when Grafo opens (default: all readable models).
+- Opening Grafo: those models on in the rail, "Relations outside selection" on (Both), so linked records of other models show as context nodes; the editor switches other models on from the rail.
+- Loading unchanged: every readable model is still loaded (owner decision 2026-10-18, option 1: incoming relations need the other models' records). Models in the config that the role can't read are ignored.
+
+**Out**
+- Partial loading with per-record `items.references` (possible later option for very large projects).
+
+**Done**
+- With "Testimonianza" as the only starting model on Gestart, Grafo opens on the 7 testimonials plus their linked records as context. Gate green.
+
+## V9 — Marketplace release
 
 **In**
 - README (dev-oriented, terse): what it does, permissions, API usage, local development.
