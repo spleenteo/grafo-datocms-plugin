@@ -84,3 +84,9 @@ Open questions for the owner before planning:
 - Two crashes found only in the browser: `follow` read before its `let` (the mount's zoom fires `end` synchronously), and `selectAll('g')` matching the new nested label groups, which exited them as duplicates and dropped nodes from the element map. Both reproduced afterwards in a headless harness with the Acacia graph (`.superpowers/lp/`, ignored).
 - Parked: the budget pass before an end-of-settle fit is wasted; a hidden pane gives an empty budget until the next zoom.
 - Left for later (owner to confirm): strokes and arrows still scale with zoom; every neighbour of the selection is labelled (65 on Cosmea), which piles up.
+
+### V1.1 — done on 2026-10-18
+
+- Strokes, dash patterns and the two arrow markers divide by `--label-k`; line-end gaps too, redrawn at zoom end (otherwise arrow tips drift off the node after zooming a settled graph).
+- Neighbour labels: focus + up to 20 neighbours, the highest-degree in view when there are more; dimming still covers every neighbour.
+- Harness checked: Cosmea shows ~20 neighbour labels; at 6× links are hairlines and arrows small.
