@@ -15,7 +15,7 @@ connect({
       {
         label: 'Grafo',
         icon: 'diagram-project',
-        placement: ['after', 'content'],
+        placement: ['after', 'configuration'],
         pointsTo: { pageId: 'graph' },
       },
     ];
