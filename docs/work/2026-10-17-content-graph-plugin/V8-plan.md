@@ -85,6 +85,7 @@ Rulings (stated to the owner): expansion follows the selection only (deselect co
 
 **What:**
 - `GraphNode` gains `createdAt: string | null`, `updatedAt: string | null`, `publishedAt: string | null`, `creator: { type: string, id: string } | null` from `item.meta.created_at/updated_at/published_at` and the optional `item.creator`; update every test fixture building `GraphNode` (`relationsOf`, `searchTitles`, `prepareSimulation`, `filterGraph`, … tests).
+- Inspector: the model name becomes a prominent line above the title (model-colour dot + name, `--font-size-s`, `--color--ink`), replacing the small model badge; the status badge stays. Owner request 2026-10-18.
 - Inspector: "Open record" button directly under the title/badges; at the bottom a muted "Details" section: Created, Last updated, Published (when `publishedAt !== null`), Created by. Dates via `Intl.DateTimeFormat(ctx.ui.locale, { dateStyle: 'medium', timeStyle: 'short' })`. Creator name, one function per type: `user` → `ctx.users[id]` `full_name` ?? `email` (call `ctx.loadUsers()` at most once, remember failures); `sso_user` → `ctx.ssoUsers[id]` `first_name last_name` ?? `username` (`ctx.loadSsoUsers()` once); `account` → `ctx.owner` when it's that account (`first_name last_name` ?? `email`); `organization` → `ctx.owner` `name`; `access_token` → "API token"; missing creator, unknown id or a failed loader → "—".
 
 **Verify:** `buildGraph` test asserts the metadata fields. Gate green. Commit.
