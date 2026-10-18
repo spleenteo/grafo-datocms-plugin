@@ -247,7 +247,7 @@ export function renderGraph(
   let requestedId: string | null = null;
   let hoveredId: string | null = null;
   let labelMode: LabelMode = options.labelMode ?? 'smart';
-  let distance = options.distance ?? 1;
+  let distance = options.distance ?? 1.6;
   let matchIds: ReadonlySet<string> = new Set(options.matchIds ?? []);
   // Set by user wheel/drag on the canvas and by zoomBy; never by fit, focusOn
   // or other programmatic transforms. When set, settles don't fit on `end`.

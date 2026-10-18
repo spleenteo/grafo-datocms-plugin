@@ -9,6 +9,10 @@ const node = (id: string, model: number, status: NodeStatus = 'published') => ({
   itemTypeId: `t${model}`,
   model,
   status,
+  createdAt: null,
+  updatedAt: null,
+  publishedAt: null,
+  creator: null,
 });
 
 // plan(0,M0) feat(1,M1) tag(2,M2) draftTag(3,M2,draft) other(4,M2)

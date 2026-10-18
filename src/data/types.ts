@@ -45,6 +45,11 @@ export type GraphNode = {
   /** Index into `graph.models` of the node's item type. */
   readonly model: number;
   readonly status: NodeStatus;
+  readonly createdAt: string | null;
+  readonly updatedAt: string | null;
+  readonly publishedAt: string | null;
+  /** Who created the record (`item.creator`), when the API returns it. */
+  readonly creator: { readonly type: string; readonly id: string } | null;
 };
 export type GraphEdge = {
   readonly source: number;

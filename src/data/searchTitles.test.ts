@@ -8,6 +8,10 @@ const node = (id: string, title: string) => ({
   itemTypeId: 't',
   model: 0,
   status: 'published' as const,
+  createdAt: null,
+  updatedAt: null,
+  publishedAt: null,
+  creator: null,
 });
 const graph: Graph = {
   models: [{ itemTypeId: 't', apiKey: 'a', name: 'A', count: 4 }],

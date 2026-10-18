@@ -13,6 +13,10 @@ const node = (id: string, model: number, status: NodeStatus = 'published') => ({
   itemTypeId: `t${model}`,
   model,
   status,
+  createdAt: null,
+  updatedAt: null,
+  publishedAt: null,
+  creator: null,
 });
 
 // a(0,M0) b(1,M0) c(2,M1) d(3,M1,draft)

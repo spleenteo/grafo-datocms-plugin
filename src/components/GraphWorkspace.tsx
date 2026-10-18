@@ -14,6 +14,7 @@ import CanvasControls from './CanvasControls';
 import FilterRail from './FilterRail';
 import GraphView, { type GraphViewHandle } from './GraphView';
 import Inspector from './Inspector';
+import { createCreatorResolver } from './creatorName';
 import styles from './GraphWorkspace.module.css';
 
 interface Props {
@@ -159,7 +160,11 @@ export default function GraphWorkspace({
 
   const [query, setQuery] = useState('');
   const [labelMode, setLabelMode] = useState<LabelMode>('smart');
-  const [distance, setDistance] = useState(1);
+  const resolveCreatorName = useMemo(
+    () => createCreatorResolver(() => ctxRef.current),
+    [],
+  );
+  const [distance, setDistance] = useState(1.6);
   const matches = useMemo(
     () => searchTitles(graph, visibleIds, query),
     [graph, visibleIds, query],
@@ -229,6 +234,8 @@ export default function GraphWorkspace({
         onSelectNode={selectNode}
         onOpenNode={openNode}
         onClose={() => selectNode(null)}
+        locale={ctx.ui.locale}
+        resolveCreatorName={resolveCreatorName}
       />
     </div>
   );

@@ -14,6 +14,10 @@ const node = (id: string, m = 0) => ({
   itemTypeId: 'x',
   model: m,
   status: 'published' as const,
+  createdAt: null,
+  updatedAt: null,
+  publishedAt: null,
+  creator: null,
 });
 
 function graph(overrides: Partial<Graph> = {}): Graph {

@@ -33,13 +33,34 @@ describe('buildGraph', () => {
   const blk = t('blk', { isBlock: true, fields: [f('ref', 'link')] });
 
   it('counts models (including empty ones, excluding blocks) and builds nodes', () => {
-    const g = buildGraph(mk([article, unused, blk]), [item('1', 'article', { title: 'One' })], []);
+    const g = buildGraph(mk([article, unused, blk]), [
+        item('1', 'article', {
+          title: 'One',
+          meta: {
+            status: 'published',
+            created_at: '2026-01-01T10:00:00Z',
+            updated_at: '2026-01-02T10:00:00Z',
+            published_at: null,
+          },
+          creator: { type: 'user', id: 'u1' },
+        }),
+      ], []);
     expect(g.models.map((m) => [m.apiKey, m.count])).toEqual([
       ['article', 1],
       ['unused', 0],
     ]);
     expect(g.nodes).toEqual([
-      { id: '1', title: 'One', itemTypeId: 'article', model: 0, status: 'published' },
+      {
+        id: '1',
+        title: 'One',
+        itemTypeId: 'article',
+        model: 0,
+        status: 'published',
+        createdAt: '2026-01-01T10:00:00Z',
+        updatedAt: '2026-01-02T10:00:00Z',
+        publishedAt: null,
+        creator: { type: 'user', id: 'u1' },
+      },
     ]);
     for (const node of g.nodes) {
       expect(g.models[node.model].itemTypeId).toBe(node.itemTypeId);

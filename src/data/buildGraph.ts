@@ -39,6 +39,13 @@ function titleOf(item: RawRecord, itemType: SchemaItemType, locales: string[]): 
   return `Untitled ${itemType.name}`;
 }
 
+function creatorOf(item: RawRecord): GraphNode['creator'] {
+  const c = (item as { creator?: { id?: unknown; type?: unknown } | null }).creator;
+  return c && typeof c.id === 'string' && typeof c.type === 'string'
+    ? { type: c.type, id: c.id }
+    : null;
+}
+
 function statusOf(item: RawRecord): NodeStatus {
   const status = item.meta?.status as string | null | undefined;
   return status === 'draft' || status === 'updated' ? status : 'published';
@@ -74,6 +81,10 @@ export function buildGraph(schema: Schema, items: RawRecord[], blocks: RawItem[]
       itemTypeId: itemType.id,
       model,
       status: statusOf(item),
+      createdAt: item.meta?.created_at ?? null,
+      updatedAt: item.meta?.updated_at ?? null,
+      publishedAt: item.meta?.published_at ?? null,
+      creator: creatorOf(item),
     });
     models[model].count++;
     kept.push({ item, itemType });
