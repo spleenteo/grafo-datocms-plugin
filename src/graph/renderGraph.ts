@@ -50,7 +50,8 @@ const PILL_PAD_Y = 3;
 const PILL_RADIUS = 4;
 
 function labelText(title: string): string {
-  return title.length > LABEL_MAX ? `${title.slice(0, LABEL_MAX - 1)}…` : title;
+  const chars = Array.from(title);
+  return chars.length > LABEL_MAX ? `${chars.slice(0, LABEL_MAX - 1).join('')}…` : title;
 }
 
 let markerSeq = 0;
@@ -186,6 +187,15 @@ export function renderGraph(
         if (hoveredId !== d.id) return;
         hoveredId = null;
         paint();
+      })
+      .on('focus', (_event: FocusEvent, d) => {
+        hoveredId = d.id;
+        paint();
+      })
+      .on('blur', (_event: FocusEvent, d) => {
+        if (hoveredId !== d.id) return;
+        hoveredId = null;
+        paint();
       });
     return g;
   }
@@ -239,6 +249,7 @@ export function renderGraph(
     if (focus === null) return;
     nodeSel
       .filter((d) => d.id === focus)
+      .raise()
       .each(function () {
         const text = this.querySelector('text');
         if (!text) return;
@@ -456,7 +467,9 @@ export function renderGraph(
         .on('click', null)
         .on('keydown', null)
         .on('mouseenter', null)
-        .on('mouseleave', null);
+        .on('mouseleave', null)
+        .on('focus', null)
+        .on('blur', null);
       svg.on('.zoom', null).on('click', null);
       // `interrupt` is patched onto selections by d3-transition, which d3-zoom
       // imports; no transitions are started here, this is belt and braces.

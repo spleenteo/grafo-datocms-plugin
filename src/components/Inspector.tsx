@@ -63,6 +63,7 @@ export default function Inspector({
           key={`${r.nodeIndex}-${r.field}-${i}`}
           type="button"
           className={`${styles.row} ${isVisible ? '' : styles.hidden}`}
+          aria-label={isVisible ? undefined : `${other.title}, hidden by filters, opens the record`}
           title={isVisible ? undefined : 'Hidden by the filters: opens the record'}
           onClick={() => (isVisible ? onSelectNode(other.id) : onOpenNode(r.nodeIndex))}
         >
@@ -92,8 +93,9 @@ export default function Inspector({
             {STATUS_LABEL[node.status]}
           </span>
         </div>
-        <Button buttonType="muted" buttonSize="xxs" onClick={onClose} aria-label="Close">
-          ×
+        <Button buttonType="muted" buttonSize="xxs" onClick={onClose}>
+          <span aria-hidden="true">×</span>
+          <span className={styles.srOnly}>Close</span>
         </Button>
       </div>
       <h2 className={styles.title}>{node.title}</h2>

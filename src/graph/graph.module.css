@@ -83,6 +83,18 @@
   stroke-width: 2.5;
 }
 
+/* Wins over the ctx and draft dot rules; a focused node is never dimmed. */
+.node.node:focus-visible[data-status] .dot {
+  stroke: var(--color--focus--border);
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+}
+
+.node.dim:focus-visible,
+.node.ctx:focus-visible {
+  opacity: 1;
+}
+
 /* Selected node only; the `updated` ring sits at r + 3.5, the halo at r + 7. */
 .halo {
   display: none;
