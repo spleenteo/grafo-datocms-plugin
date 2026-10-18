@@ -29,5 +29,5 @@ A link can sit in a field of a block nested inside a record's modular content, s
 
 ## References
 
-- `docs/work/2026-10-17-grafo/spike-cma-loading.md` § 3
+- `docs/work/archive/2026-10-17-grafo/spike-cma-loading.md` § 3
 - User decision, 2026-10-18 (V2 planning)

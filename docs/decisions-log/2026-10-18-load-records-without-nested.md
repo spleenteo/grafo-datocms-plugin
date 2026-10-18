@@ -32,5 +32,5 @@ The graph needs every link, including links inside blocks (modular content, sing
 
 ## References
 
-- `docs/work/2026-10-17-grafo/spike-cma-loading.md`
-- `docs/work/2026-10-17-grafo/slices.md` § V2
+- `docs/work/archive/2026-10-17-grafo/spike-cma-loading.md`
+- `docs/work/archive/2026-10-17-grafo/slices.md` § V2

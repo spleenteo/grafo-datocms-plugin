@@ -6,6 +6,7 @@ step: null
 work: grafo
 stack: generic
 updated: 2026-10-18
+archived: 2026-10-18
 tags: [work, grafo]
 description: "Full-page DatoCMS plugin that renders record relations (incoming and outgoing) as an interactive graph, with filters by model, status and relation field; each node opens its record."
 ---

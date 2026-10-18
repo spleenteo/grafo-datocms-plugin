@@ -41,5 +41,5 @@ Cost for a restricted role: `1 + max(1, ceil(records/30))` per 200-model chunk.
 ## References
 
 - `docs/decisions-log/2026-10-18-load-records-without-nested.md`
-- `docs/work/2026-10-17-grafo/V5-plan.md`
-- `docs/work/2026-10-17-grafo/lessons.md` (role isolation)
+- `docs/work/archive/2026-10-17-grafo/V5-plan.md`
+- `docs/work/archive/2026-10-17-grafo/lessons.md` (role isolation)
