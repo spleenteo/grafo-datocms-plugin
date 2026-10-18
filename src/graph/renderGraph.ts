@@ -854,8 +854,8 @@ export function renderGraph(
   let follow = false;
 
   // The variable that labels and strokes read, plus the two arrow sizes: the
-  // only per-zoom writes. draw() reads labelK for the line ends, so between
-  // ticks after a zoom they are stale by a fraction of a pixel.
+  // only per-zoom writes. draw() reads labelK for the line ends: stale during a
+  // zoom gesture, redrawn at its end.
   function setLabelK(next: number) {
     labelK = next;
     svgEl.style.setProperty('--label-k', String(next));
@@ -883,6 +883,8 @@ export function renderGraph(
       if (destroyed) return;
       // At rest the exact value, not the last one past the epsilon.
       setLabelK(Math.max(1, event.transform.k));
+      // Line ends follow the new labelK even when the simulation is at rest.
+      draw();
       if (!follow) refreshBudget();
     });
   svg.call(zoomBehavior).on('dblclick.zoom', null);
