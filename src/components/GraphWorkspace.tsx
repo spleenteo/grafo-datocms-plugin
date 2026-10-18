@@ -105,6 +105,17 @@ export default function GraphWorkspace({
     viewRef.current?.focusOn(id);
   }, []);
 
+  // Set synchronously on click so a fast double click starts one refresh.
+  const reloadStartedRef = useRef(false);
+  useEffect(() => {
+    if (!isRefreshing) reloadStartedRef.current = false;
+  }, [isRefreshing]);
+  const reload = useCallback(() => {
+    if (reloadStartedRef.current) return;
+    reloadStartedRef.current = true;
+    onReload();
+  }, [onReload]);
+
   const [query, setQuery] = useState('');
   const [labelMode, setLabelMode] = useState<LabelMode>('smart');
   const [distance, setDistance] = useState(1);
@@ -165,7 +176,7 @@ export default function GraphWorkspace({
           onFit={() => viewRef.current?.fit()}
           onRelayout={() => viewRef.current?.relayout()}
           stats={stats}
-          onReload={onReload}
+          onReload={reload}
           isReloadDisabled={isRefreshing}
         />
       </div>

@@ -69,11 +69,9 @@ export default function CanvasControls(props: Props) {
             onChange={props.onQueryChange}
             onKeyDown={onSearchKeyDown}
           />
-          {line && (
-            <p className={styles.matchLine} role="status">
-              {line}
-            </p>
-          )}
+          <p className={styles.matchLine} role="status">
+            {line ?? ''}
+          </p>
         </div>
       </div>
 
@@ -116,6 +114,7 @@ export default function CanvasControls(props: Props) {
             max={3}
             step={0.05}
             value={distance}
+            aria-label="Node distance"
             onChange={(e) => props.onDistanceChange(Number(e.target.value))}
           />
           <span className={styles.distanceValue}>{distance.toFixed(1)}×</span>

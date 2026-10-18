@@ -115,7 +115,7 @@ export function renderGraph(
   data: ReturnType<typeof prepareSimulation>,
   options: RenderGraphOptions,
 ): RenderGraphHandle {
-  const { modelName, onSelect, initialPositions, initialTransform } = options;
+  const { modelName, onSelect } = options;
 
   // Own copies: d3 writes x/y/vx/vy on nodes and swaps link ends for objects,
   // so a second mount (StrictMode) or re-render never sees mutated input.
@@ -151,6 +151,17 @@ export function renderGraph(
   // Seeded nodes keep their old place; a node new to this mount starts next
   // to a seeded neighbour (or where d3 would put it when it has none). Runs
   // before the simulation initialises the nodes.
+  // A mount counts as seeded only when a node of the initial visible set got a
+  // position; otherwise (e.g. an empty graph that gained records) it takes the
+  // normal path and ignores the carried transform and moved flag.
+  const initialIds = options.initialVisible
+    ? [...options.initialVisible.coreIds, ...options.initialVisible.contextIds]
+    : [...nodeById.keys()];
+  const initialPositions = options.initialPositions?.size
+    && initialIds.some((id) => options.initialPositions?.has(id))
+    ? options.initialPositions
+    : undefined;
+  const initialTransform = initialPositions ? options.initialTransform : undefined;
   if (initialPositions) seedPositions(initialPositions);
   function seedPositions(seed: ReadonlyMap<string, Point>) {
     for (const n of allNodes) {
@@ -182,7 +193,7 @@ export function renderGraph(
   let matchIds: ReadonlySet<string> = new Set(options.matchIds ?? []);
   // Set by user wheel/drag on the canvas and by zoomBy; never by fit, focusOn
   // or other programmatic transforms. When set, settles don't fit on `end`.
-  let userMoved = options.initialUserMoved ?? false;
+  let userMoved = (initialPositions && options.initialUserMoved) || false;
   let scale = 1;
   // Focus + neighbours from the last paint(); read by the labels-only pass.
   let focusSet = new Set<string>();
