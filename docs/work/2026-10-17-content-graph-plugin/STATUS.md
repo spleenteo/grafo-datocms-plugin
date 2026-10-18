@@ -36,3 +36,4 @@ description: "Full-page DatoCMS plugin that renders record relations (incoming a
 - 2026-10-18 — spike CMA loading — 3 requests on Gestart (schema 1, records 1, blocks 1), POC edges reconciled (347 = 291 + 56 parent_id) — V2 plan — — —
 - 2026-10-18 — V2 close — data layer + page counts; Gestart 248/19/347, 3 requests; 4 task reviews + final review (4 fixes) — V3 plan — — —
 - 2026-10-18 — V3 close — D3 graph view, click opens record; 3 task reviews + final review (6 fixes) — V4 plan — — —
+- 2026-10-18 — spike CDA vs CMA — CDA same graph, 2–3 requests, faster, 10× cheaper, but rejects currentUserAccessToken (401); project token breaks role isolation → stay on CMA; open questions to DatoCMS team; role leaks found (model names, blocks) — V4 close — — —

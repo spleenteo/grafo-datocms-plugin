@@ -43,3 +43,20 @@ GraphQL names: type `Pascal(api_key) + "Record"`, field `camel(api_key)`; root c
 - **B. CDA with a token from the plugin settings.** Config screen where an admin pastes a read-only CDA token with preview access (or a button that fills it from the project's "Read-only API token" via one CMA call made by an admin). Then the plugin no longer needs `currentUserAccessToken` at all: it can't write anywhere. Cost: setup step, token readable by anyone who can read plugin parameters, not role-aware.
 - **C. CDA with `currentUserAccessToken`.** Ruled out by the probe (401). Would need DatoCMS to accept user session tokens on the CDA (feature request).
 - Schema for B/C: introspection (1 CDA call) plus `ctx.itemTypes` (free) for names, tree flag and title field; no CMA call.
+
+## Role check with the CMA (2026-10-18)
+
+Token "Changelog app", role "Changelog reader" (read: `changelog` only), same calls as `loadGraph`:
+- schema (`site` + includes): all 19 models and 21 blocks visible;
+- `items.list` over all model IDs: 36 records, all `changelog` (no error, other models silently filtered);
+- `items.list` over all block-model IDs: **all 333 blocks**, including blocks of records the role cannot read;
+- graph: 36 records, 0 relations (links to hidden records dropped as dangling).
+
+So records and relations follow the role; two leaks remain: model names of unreadable models in the filter rail (count 0), and block payloads of hidden records downloaded (not displayed).
+
+## Decision (owner, 2026-10-18)
+
+- Roles are a hard requirement: a role must see only content it is authorised for; everything else must not exist for it. Option B (project CDA token) is out.
+- Stay on the CMA for now: few calls, benefit of the CDA not perceptible yet.
+- Open: the owner asks the DatoCMS team (1) why the CDA rejects the user session token, (2) whether block listing ignoring role read permissions is intended. Revisit CDA (option C) if (1) changes.
+- To fix in a later slice: hide unreadable models from the rail; avoid downloading blocks of unreadable records (nested listing for restricted roles, or a CMA fix).
