@@ -90,6 +90,8 @@ Rulings (stated to the owner): expansion follows the selection only (deselect co
 
 **Verify:** `buildGraph` test asserts the metadata fields. Gate green. Commit.
 
+Also in T6 (owner request 2026-10-18): default node distance 1.6× (workspace initial state and the renderer's fallback).
+
 ### Task 7 (T7): Remember the editor's filters (depends on: T5)
 
 **Files:** create `src/data/storedFilters.ts` (+ test); modify `src/components/GraphWorkspace.tsx`, `src/entrypoints/GraphPage.tsx`.
