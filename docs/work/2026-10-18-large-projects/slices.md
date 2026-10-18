@@ -70,13 +70,20 @@ Reference for the upper end: the DatoCMS site, about 3400 records.
 
 **Gotchas**: changes `GraphField`, `buildGraph`, `filterGraph`, `storedFilters`, `remapFilters`, `startingFilters` and their tests. Block fields: links inside blocks are attributed to the record's top-level field (decision 2026-10-18), so the model is always the record's model.
 
-## V4 — Exploration mode (to shape)
+## V4 — Exploration mode
 
-Open questions for the owner before planning:
-- Threshold (e.g. 1500 readable records) above which Grafo opens empty with search, or on the starting models only, or with orphans hidden.
-- Auto-filters: hide models below X records, hide orphans by default when they are more than half the graph (Acacia: 51%).
-- "Expand neighbourhood" as the main way to grow the view, "Show everything" as an explicit action with a warning.
-- Clustering (collapse a model to one node) left for later.
+Shaped with the owner on 2026-10-18:
+
+- **Threshold**: a graph with more than 1500 readable records is large (Acacia, 1873, is).
+- **Opening a large graph**: with starting models configured, Grafo opens on them with orphans hidden; without, it opens on an empty canvas with the search in front, and the view grows from the record found (selection already expands its relations).
+- **Orphans**: hidden by default whenever they are more than half the records (Acacia: 51%), large or not.
+- **No "Show everything"** action: selecting all models in the rail is the way.
+
+**In**: starting filters policy, empty-canvas state with a hint, search over every record when nothing is visible, a short result list to pick from.
+
+**Out**: clustering, auto-hiding small models.
+
+**Done**: Acacia without starting models opens empty with the search focused; typing "pri" lists Primula, picking it shows Primula and its relations; Reset filters returns to the empty canvas; with starting models it opens on them without orphans; Gestart (197 records) opens as today unless its orphans exceed half.
 
 ### V1 — done on 2026-10-18
 

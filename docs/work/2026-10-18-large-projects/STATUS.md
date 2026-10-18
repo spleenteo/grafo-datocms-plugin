@@ -2,7 +2,7 @@
 status: open
 phase: slice
 slice: V4
-step: shape
+step: review
 work: large-projects
 stack: react
 updated: 2026-10-18
