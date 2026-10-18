@@ -199,6 +199,12 @@ _Split from the former V5 on 2026-10-18 (too many tasks for one plan): search, l
 - Distance control and Reload button are not in the design: distance floats left of the zoom stack, Reload sits at the end of the stats line (pending the general UI review).
 - Refresh keeps node positions by seeding the re-mounted renderer from the old one (`positions()` → `initialPositions`).
 
+**V6 — done on 2026-10-18**
+- `searchTitles`, `remapFilters` (pure, tests); renderer view API (label modes with a labels-only pass on zoom, search highlight, zoomBy/fit/relayout/setDistance, `userMoved`, seeded mount from `initialPositions`/`initialTransform`/`initialUserMoved`, `initialVisible` so the first update after a mount is a no-op); floating `CanvasControls` per the Mockup; in-place Reload (`fresh` bypass with per-key token, generation guard, workspace keyed by `loadKey`, filters remapped during render).
+- Verified on Gestart by the owner: search, label modes, zoom controls, distance, wheel zoom then filter without jump, Reload keeping filters/selection/layout/zoom, both themes.
+- Rulings: +/− count as user zoom; review fixes applied without the first stop (owner asked); `paint()` profiling deferred.
+- Deferred: relayout above 1000 nodes overrides user zoom during the settle; "Reloading…"/"Reload failed" not announced; tests for the fresh memo, generation guard and remap during render (proposed as V7 hardening).
+
 ## V7 — Marketplace release
 
 **In**

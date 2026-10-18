@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Product name: **Grafo** (renamed from "Content Graph" on 2026-10-18; the repo, npm package name and work slug keep the old name). V1–V3 done: tab "Grafo" in the main navigation (`pageId` `graph`), data layer in `src/data/` (CMA loading + graph building), D3 view in `src/graph/` + `src/components/GraphView.tsx`, page `src/entrypoints/GraphPage.tsx`. Filters, inspector and search are not built yet. Work state: `docs/work/2026-10-17-content-graph-plugin/STATUS.md`.
+Product name: **Grafo** (renamed from "Content Graph" on 2026-10-18; the repo, npm package name and work slug keep the old name). V1–V6 done: tab "Grafo" in the main navigation (`pageId` `graph`), data layer in `src/data/` (CMA loading + graph building), D3 view in `src/graph/` + `src/components/GraphView.tsx`, page `src/entrypoints/GraphPage.tsx`. Filters, role isolation, inspector, search and view controls are built; V7 (marketplace release) is next. Work state: `docs/work/2026-10-17-content-graph-plugin/STATUS.md`.
 
 Commands:
 
@@ -25,7 +25,7 @@ Grafo: a DatoCMS plugin that shows record relations as an interactive graph. Edi
 - Never commit DatoCMS tokens or any user secret.
 - Never commit `poc/` (add it to `.gitignore`).
 - Docs/README tone: developer-oriented, terse.
-- Use `content-graph-dato-design.pen` (via the `pencil` MCP tools only, it is encrypted) for discussing visual details and for the marketplace cover image. It holds the Grafo landing (with the plugin mockup: filter rail, canvas, inspector), cover and logo; PNG exports of cover and logo live in `design/export/`.
+- Use `design/content-graph-dato-design.pen` (via the `pencil` MCP tools only, it is encrypted) for discussing visual details and for the marketplace cover image. It holds the Grafo landing (with the plugin mockup: filter rail, canvas, inspector), cover and logo; PNG exports of cover and logo live in `design/export/`.
 
 ## POC as reference (`poc/gestart-graph.html`)
 
